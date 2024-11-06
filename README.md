@@ -11,3 +11,5 @@ Some Programs written using the program specification, to use for Lexer.
 
 - [ ] Write Lexical Analyzer Generator in lex/flex.
 - [ ] Add Manual Lexer Output for the Lexer to be checked against.
+- [ ] Add Symbol Table Functionality using hashtable implementation.
+- [ ] Add github pages for testcase check automataion.

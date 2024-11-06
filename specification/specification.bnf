@@ -1,0 +1,50 @@
+<start> ::= "program" <id> ";" <decList> <funcList> <block>
+<decList> ::= <decs> | <decList> <decs>
+<decs> ::= <type> <varList> ";" | ""
+<type> ::= "integer" | "real" | "boolean"
+<varList> ::= <id> | <varlist> "," <id>
+<funcList> ::= <funcDec> | ""
+<funcDec> ::= "function" <id> <parameters> ":" <type> <decList> <block>
+<parameters> ::= "(" <decList> ")"
+<block> ::= "begin" <stmtList> "end"
+<stmt> ::= <stmt> | <stmtList> <stmt>
+<stmt> ::= <id> ":=" <expr> ";" 
+				 | "if" <expr> "then" <stmt>
+				 | "if" <expr> "then" <stmt> "else" stmt
+				 | "while" <expr> "do" <stmt>
+				 | "for" <id> ":=" <expr> "to" <expr> "do" <stmt>
+				 | "return" <expr> ";"
+				 | <block>
+
+<expr> ::= <expr> "and" <expr> | <expr> "or" <expr>
+				 | <expr> "*" <expr> | <expr> "/" <expr>
+				 | <expr> "+" <expr> | <expr> "-" <expr>
+				 | <expr> <relop> <expr>
+				 | "(" <expr> ")"
+				 | <integerNumber> | <realNumber>
+				 | "true" | "false"
+				 | <id>"("<actualparamlist>")"
+				 | <id>
+
+<actualparamlist> ::= <expr> | <actualparamlist>"," <expr> | <id> | ""
+<relop> ::= "<" | "<=" | "=" | "<>" | ">=" | ">"
+
+<id> ::= <letter><string>
+<string> ::= <letter><string> | <digit><string> | <letter> | <digit> 
+<letter> ::= "A" | "B" | "C" | "D" | "E" | "F" | "G"
+       | "H" | "I" | "J" | "K" | "L" | "M" | "N"
+       | "O" | "P" | "Q" | "R" | "S" | "T" | "U"
+       | "V" | "W" | "X" | "Y" | "Z" | "a" | "b"
+       | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+       | "j" | "k" | "l" | "m" | "n" | "o" | "p"
+       | "q" | "r" | "s" | "t" | "u" | "v" | "w"
+       | "x" | "y" | "z"
+
+<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" 
+
+integerNum ::= <sign><digitSequence>
+<sign> ::= "+" | "-" | ""
+<digitSequence> ::= <digit><digitSequence> | <digit>
+
+<realNumber> ::= <integerNum> | <integerNum>"."<decmialPlace>
+<decimalPlace> ::= <digitSequence> | <digitSequence>"E"<integerNum>

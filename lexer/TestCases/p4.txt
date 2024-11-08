@@ -1,0 +1,50 @@
+program MatrixOperations;
+
+integer i, j, k;
+integer n;
+real result;
+
+function get_matrix1_element(i: integer, j: integer): real
+begin
+    if i = 1 and j = 1 then return 1.0;
+    if i = 1 and j = 2 then return 2.0;
+    if i = 1 and j = 3 then return 3.0;
+    if i = 2 and j = 1 then return 4.0;
+    if i = 2 and j = 2 then return 5.0;
+    if i = 2 and j = 3 then return 6.0;
+    if i = 3 and j = 1 then return 7.0;
+    if i = 3 and j = 2 then return 8.0;
+    if i = 3 and j = 3 then return 9.0;
+    return 0.0;
+end
+
+function get_matrix2_element(i: integer, j: integer): real
+begin
+    if i = 1 and j = 1 then return 9.0;
+    if i = 1 and j = 2 then return 8.0;
+    if i = 1 and j = 3 then return 7.0;
+    if i = 2 and j = 1 then return 6.0;
+    if i = 2 and j = 2 then return 5.0;
+    if i = 2 and j = 3 then return 4.0;
+    if i = 3 and j = 1 then return 3.0;
+    if i = 3 and j = 2 then return 2.0;
+    if i = 3 and j = 3 then return 1.0;
+    return 0.0;
+end
+
+function multiply_matrices(n: integer): real
+integer i, j, k;
+real sum;
+begin
+    sum := 0.0;
+    for i := 1 to n do
+        for j := 1 to n do
+            for k := 1 to n do
+                sum := sum + (get_matrix1_element(i, k) * get_matrix2_element(k, j));
+    return sum;
+end
+
+begin
+    n := 3;
+    result := multiply_matrices(n);
+end

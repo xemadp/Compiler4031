@@ -1,0 +1,16 @@
+program prg3;
+
+function intpow(integer base, integer exp;): integer
+integer result, num;
+
+begin
+	result := 1;
+
+	for num:=0 to exp do
+		result := result * base;
+	
+	return result;
+end
+begin
+	thousand := intpow(10,3); 
+end

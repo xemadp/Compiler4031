@@ -1,157 +1,137 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "symtab.h"
 
-#define TABLE_SIZE 5011  // Prime number to help with distribution
+#define TABLE_SIZE 10000  // Prime number to help with distribution.
+#define LOAD_FACTOR 0.7 // Load Factor, to know when to resize.
 
-typedef struct {
-    char *key;      // Symbol name 
-    int data;       // Symbol data (e.g., type or scope level)
-    int is_occupied;  // 1 if the slot is occupied, 0 if it is empty
-} Symbol;
 
-// Initialize the hash table as an array of pointers to Symbol entries
-Symbol* hash_table[TABLE_SIZE] = {NULL};  
-
-// Primary hash function
-unsigned int primary_hash(const char *key) {
-    unsigned int hash_val = 0;
-    for (int i = 0; key[i] != '\0'; i++) {
-        hash_val = 31 * hash_val + key[i];
-    }
-    return hash_val % TABLE_SIZE;
-}
-
-// Secondary hash function for double hashing
-unsigned int secondary_hash(const char *key) {
-    unsigned int hash_val = 0;
-    for (int i = 0; key[i] != '\0'; i++) {
-        hash_val = 17 * hash_val + key[i];
-    }
-    return (hash_val % (TABLE_SIZE - 1)) + 1; // Secondary hash must be positive integer
-}
-
-// Function to calculate the probing sequence
-unsigned int double_hash_probe(const char *key, int i) {
-    return (primary_hash(key) + i * secondary_hash(key)) % TABLE_SIZE;
-}
-
-// Insert a symbol into the hash table
-void insert(const char *key, int data) {
-    unsigned int index;
-    int i = 0;
-
-    // Probe until we find an empty slot
-    do {
-        index = double_hash_probe(key, i);
-        if (hash_table[index] == NULL || !hash_table[index]->is_occupied) {
-            // Allocate memory for the new symbol and insert it
-            if (hash_table[index] == NULL) {
-                hash_table[index] = malloc(sizeof(Symbol));
-            }
-            hash_table[index]->key = strdup(key);
-            hash_table[index]->data = data;
-            hash_table[index]->is_occupied = 1;
-            printf("Inserted symbol '%s' at index %d\n", key, index);
-            return;
-        } else if (strcmp(hash_table[index]->key, key) == 0) {
-            // Update data if the key already exists
-            hash_table[index]->data = data;
-            printf("Updated symbol '%s' at index %d\n", key, index);
-            return;
+// Hash Function: return hash value for a string
+unsigned int hash(const char *key, int table_size) {
+    unsigned int hash = 0;
+    for (int i = 0; key[i] != '\0'; i++){
+        hash = (hash + key[i]) % table_size;
         }
-        i++;
-    } while (i < TABLE_SIZE);
-
-    printf("Error: Hash table is full\n");
+    return hash;
 }
 
-// Search for a symbol by key
-int search(const char *key) {
-    unsigned int index;
-    int i = 0;
+// Create a hash table instance
+HashTable* create_table(int size) {
+    HashTable *table = malloc(sizeof(HashTable));
+    table->symbols = calloc(size, sizeof(Symbol)); // Set all entries to 0 initially.
+    table->size = size;
+    table->count = 0;
+    return table;
+}
 
-    while (i < TABLE_SIZE) {
-        index = double_hash_probe(key, i);
-        if (hash_table[index] == NULL) {
-            return -1;  // Symbol not found
-        } else if (hash_table[index]->is_occupied && strcmp(hash_table[index]->key, key) == 0) {
-            return hash_table[index]->data;
-        }
-        i++;
+// resize the hash table when the load factor is reached
+void resize(HashTable *table);
+
+// Insert a pair (key, value) into hash table
+int insert(HashTable *table, const char *key, void* value, SymbolType type, int lineno, int row) {
+    if ((float)table->count / table->size >= LOAD_FACTOR){
+        resize(table);
     }
-    return -1;  // Symbol not found after full probe
+
+    unsigned int index = hash(key, table->size);
+
+    while (table->symbols[index].is_occupied == 1){
+        index = (index+1) % table->size; // linear probing.
+    }
+
+    // inset new symbol
+    table->symbols[index].key = strdup(key);
+    table->symbols[index].value = value;
+    table->symbols[index].type = type;
+    table->symbols[index].is_occupied = 1;
+    table->symbols[index].line_num = lineno;
+    table->symbols[index].row = row;
+    table->count++;
+
+
+    return index;
 }
 
-// Delete a symbol by key
-void delete(const char *key) {
-    unsigned int index;
-    int i = 0;
 
-    while (i < TABLE_SIZE) {
-        index = double_hash_probe(key, i);
-        if (hash_table[index] == NULL) {
-            printf("Symbol '%s' not found\n", key);
-            return;
-        } else if (hash_table[index]->is_occupied && strcmp(hash_table[index]->key, key) == 0) {
-            // Mark the entry as deleted
-            hash_table[index]->is_occupied = 0;
-            printf("Deleted symbol '%s' at index %d\n", key, index);
+// Search within a hash table.
+Symbol search(HashTable *table, const char *key){
+    unsigned int index = hash(key, table->size);
+
+    while (table->symbols[index].is_occupied != 0){
+        if (table->symbols[index].is_occupied == 1 && strcmp(table->symbols[index].key, key) == 0){
+            return table->symbols[index];
+        }
+        index = (index+1) % table->size; // linear
+    }
+   
+    // Return an "empty" symbol if not found
+    Symbol empty_symbol = {NULL, 0, NULL, -1, -1, 0};  // Create an empty Symbol with no key and no value
+    return empty_symbol;
+}
+
+// delete a key from a hash table.
+void delete(HashTable *table, const char *key){
+    unsigned int index = hash(key, table->size);
+
+    while (table->symbols[index].is_occupied != 0){
+        if (table->symbols[index].is_occupied == 1 && strcmp(table->symbols[index].key, key) == 0){
+            table->symbols[index].is_occupied = -1; // mark as deleted.
+            free(table->symbols[index].key);
+            table->count--;
             return;
         }
-        i++;
+        index = (index+1) % table->size; // linear
     }
-    printf("Symbol '%s' not found\n", key);
 }
 
-// Free the memory associated with the hash table
-void free_table() {
-    for (int i = 0; i < TABLE_SIZE; i++) {
-        if (hash_table[i] != NULL) {
-            free(hash_table[i]->key);
-            free(hash_table[i]);
+
+// Resize the table when the size limit (load factor) is reached.
+void resize(HashTable *table){
+// create a new table with new size.
+    int newSize = table->size *2;
+    Symbol *oldSymbols = table->symbols;
+    int oldSize = table->size;
+    
+    table->symbols = calloc(newSize, sizeof(Symbol));
+    table->size = newSize;
+    table->count = 0;
+
+    //Rehashing all of the occupied symbols
+    for (int i=0; i< oldSize; i++){
+        if (oldSymbols[i].is_occupied == 1){
+            insert(table, oldSymbols[i].key, oldSymbols[i].value, oldSymbols[i].type, oldSymbols[i].line_num, oldSymbols[i].row);
+            free(oldSymbols[i].key); // free the old keys.
         }
     }
+    free(oldSymbols);
 }
 
-// Main function to test the implementation
-int main() {
-    insert("x", 1);
-    insert("y", 2);
-    insert("z", 3);
-
-    // Search for symbols
-    int result = search("x");
-    if (result != -1) {
-        printf("Found symbol 'x' with data: %d\n", result);
-    } else {
-        printf("Symbol 'x' not found.\n");
+// Free the hash table
+void free_table(HashTable *table) {
+    for (int i = 0; i < table->size; i++) {
+        if (table->symbols[i].is_occupied == 1) {
+            free(table->symbols[i].key);  // Free allocated keys
+        }
     }
+    free(table->symbols);  // Free entry array
+    free(table);  // Free table structure
+}
 
-    result = search("y");
-    if (result != -1) {
-        printf("Found symbol 'y' with data: %d\n", result);
-    } else {
-        printf("Symbol 'y' not found.\n");
-    }
+/* Example usage of Hash Table */
 
-    result = search("a");  // Search for a symbol that does not exist
-    if (result != -1) {
-        printf("Found symbol 'a' with data: %d\n", result);
-    } else {
-        printf("Symbol 'a' not found.\n");
-    }
-
-    // Delete a symbol
-    delete("y");
-    result = search("y");
-    if (result != -1) {
-        printf("Found symbol 'y' with data: %d\n", result);
-    } else {
-        printf("Symbol 'y' not found.\n");
-    }
-
-    // Free the hash table
-    free_table();
+/*
+int main(){
+    HashTable *table = create_table(200);
+    // Store the value by allocating memory for it
+    int *value = malloc(sizeof(int));
+    *value = 12;
+    insert(table, "x", value);
+    
+    Symbol klid = search(table, "x");
+    int s = *(int*)klid.value;
+    printf("Retrieved value: %d\n", s);
+    free_table(table);
     return 0;
 }
+*/

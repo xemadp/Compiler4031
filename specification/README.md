@@ -387,44 +387,43 @@ referenced by:
 
 # Lexeme & Token List
 [list](https://www.github.com/xemadp/compiler4031/blob/master/specification/token_list.txt) of Lexmes and their corresponding Tokens provided in the [project declaration](https://www.github.com/xemadp/Compiler4031/blob/master/phase1.pdf).
-```
------------------------------
-LEXEMES       | TOKEN_NAME  
---------------|--------------
-program	      | PROGRAM_KW   
-function      | FUNCTION_KW
-begin         | BEGIN_KW
-end           | END_KW
-while         | WHILE_KW
-do            | DO_KW
-to            | TO_KW
-if            | IF_KW
-then          | THEN_KW
-else          | ELSE_KW
-integer       | INTEGER_KW
-real          | REAL_KW
-boolean       | BOOLEAN_KW
-return        | RETURN_KW
-and           | AND_KW
-or            | OR_KW
-false         | FALSE_KW
-id            | IDENTIFIER
-integerNumber | INTEGER_NUMBER
-realNumber    | REAL_NUMBER
-:=            | ASSIGN_OP
-*             | MUL_OP
-/             | DIV_OP
-+             | ADD_OP
--             | SUB_OP
-<             | LT_OP
-<=            | LE_OP
-<>            | NE_OP
-=             | EQ_OP
->=            | GE_OP
->             | GT_OP
-:             | COLON
-;             | SEMICOLON
-,             | COMMA
-(             | RIGHT_PA
-)             | LEFT_PA
-```
+
+| **LEXEMES**       | **TOKEN_NAME**     |
+|--------------------|--------------------|
+| `program`         | `PROGRAM_KW`       |
+| `function`        | `FUNCTION_KW`      |
+| `begin`           | `BEGIN_KW`         |
+| `end`             | `END_KW`           |
+| `while`           | `WHILE_KW`         |
+| `do`              | `DO_KW`            |
+| `to`              | `TO_KW`            |
+| `if`              | `IF_KW`            |
+| `then`            | `THEN_KW`          |
+| `else`            | `ELSE_KW`          |
+| `integer`         | `INTEGER_KW`       |
+| `real`            | `REAL_KW`          |
+| `boolean`         | `BOOLEAN_KW`       |
+| `return`          | `RETURN_KW`        |
+| `and`             | `AND_KW`           |
+| `or`              | `OR_KW`            |
+| `false`           | `FALSE_KW`         |
+| `id`              | `IDENTIFIER`       |
+| `integerNumber`   | `INTEGER_NUMBER`   |
+| `realNumber`      | `REAL_NUMBER`      |
+| `:=`              | `ASSIGN_OP`        |
+| `*`               | `MUL_OP`           |
+| `/`               | `DIV_OP`           |
+| `+`               | `ADD_OP`           |
+| `-`               | `SUB_OP`           |
+| `<`               | `LT_OP`            |
+| `<=`              | `LE_OP`            |
+| `<>`              | `NE_OP`            |
+| `=`               | `EQ_OP`            |
+| `>=`              | `GE_OP`            |
+| `>`               | `GT_OP`            |
+| `:`               | `COLON`            |
+| `;`               | `SEMICOLON`        |
+| `,`               | `COMMA`            |
+| `(`               | `RIGHT_PA`         |
+| `)`               | `LEFT_PA`          |
+

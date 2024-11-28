@@ -16,9 +16,10 @@ FILE *output; // Output file pointer
 digit            [0-9]
 integer          0|[1-9][0-9]*
 leadingInt       [0]+{integer}
-optionalFrac     (\.{digit}+)?
-optionalExp      ([E][+-]?{digit}+)?
-real             {integer}{optionalFrac}{optionalExp}
+optionalFrac     (\.{digit}+)
+optionalExp      ([E][+-]?{integer})
+real             {integer}{optionalFrac}{optionalExp}|{integer}{optionalFrac}|{integer}{optionalExp}
+leadingReal      [0]+{real}
 id               [a-zA-Z][a-zA-Z0-9]*
 wrongID          {digit}+{id}
 
@@ -64,6 +65,41 @@ wrongID          {digit}+{id}
 "("                { fprintf(output, "%s\t\t <LEFT_PA, ->\n", yytext);}         
 ")"                { fprintf(output, "%s\t\t <RIGHT_PA, ->\n", yytext);}         
 
+{leadingReal} {
+    fprintf(output, "ILLEGAL LEXEME:\t %s\n", yytext);
+}
+
+{real} {
+    Symbol s = search(symboltable, yytext);
+    int row;
+    if (s.key != NULL) { // getToken();
+        row = s.row;
+    } else { // installReal() : Add new token to the symbol table
+        row = row_index;
+        insert(symboltable, yytext, NULL, SYMBOL_TYPE_CONSTANT, yylineno, row);
+        row_index++;
+    }
+    fprintf(output, "%s\t\t <REAL_NUMBER, %d>\n", yytext, row);
+}
+
+{leadingInt} {
+    fprintf(output, "ILLEGAL LEXEME:\t %s\n", yytext);
+}
+
+
+{integer} {
+    Symbol s = search(symboltable, yytext);
+    int row;
+    if (s.key != NULL) { // getToken();
+        row = s.row;
+    } else { // installInteger() : Add new token to the symbol table
+        row = row_index;
+        insert(symboltable, yytext, NULL, SYMBOL_TYPE_CONSTANT, yylineno, row);
+        row_index++;
+    }
+    fprintf(output, "%s\t\t <INTEGER_NUMBER, %d>\n", yytext, row);
+}
+
 {wrongID} {
     fprintf(output, "ILLEGAL LEXEME:\t %s\n", yytext);
 }
@@ -72,9 +108,9 @@ wrongID          {digit}+{id}
     Symbol s = search(symboltable, yytext);
     int row;
     if (s.key != NULL) {
-        row = s.row; // Existing token in the symbol table
+        row = s.row; // getToken() : Existing token in the symbol table
     } else {
-        row = row_index; // Add new token to the symbol table
+        row = row_index; // installID() : Add new token to the symbol table
         insert(symboltable, yytext, NULL, SYMBOL_TYPE_IDENTIFIER, yylineno, row);
         row_index++;
     }
@@ -82,35 +118,7 @@ wrongID          {digit}+{id}
     fprintf(output, "%s\t\t <IDENTIFIER, %d>\n", yytext, row);
 }
 
-{leadingInt} {
-    fprintf(output, "ILLEGAL LEXEME:\t %s\n", yytext);
-}
 
-{integer} {
-    Symbol s = search(symboltable, yytext);
-    int row;
-    if (s.key != NULL) {
-        row = s.row;
-    } else {
-        row = row_index;
-        insert(symboltable, yytext, NULL, SYMBOL_TYPE_IDENTIFIER, yylineno, row);
-        row_index++;
-    }
-    fprintf(output, "%s\t\t <INTEGER_NUM, %d>\n", yytext, row);
-}
-
-{real} {
-    Symbol s = search(symboltable, yytext);
-    int row;
-    if (s.key != NULL) {
-        row = s.row;
-    } else {
-        row = row_index;
-        insert(symboltable, yytext, NULL, SYMBOL_TYPE_IDENTIFIER, yylineno, row);
-        row_index++;
-    }
-    fprintf(output, "%s\t\t <REAL_NUM, %d>\n", yytext, row);
-}
 
 . {
     fprintf(output, "ILLEGAL LEXEME: %s\n", yytext);
@@ -119,7 +127,7 @@ wrongID          {digit}+{id}
 %%
 
 int main(void) {
-    symboltable = create_table(3001);
+    symboltable = create_table(7459);
 
     FILE *input = fopen("input.txt", "r");
     output = fopen("output.txt", "w");
@@ -129,8 +137,7 @@ int main(void) {
         return 1;
     }
 
-    fprintf(output, "Emad Pourhassani <40116623> & Afarin Akhoundi <40115283>\n");
-
+    fprintf(output, "Emad Pourhassani <40116623, ->\nAfarin Akhoundi <40115283, ->\n----------------------------------------------\n");
 
     if (input) {
         yyin = input;  // Set yyin to read from a file

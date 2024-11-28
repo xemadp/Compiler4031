@@ -4,7 +4,7 @@ integer i, j, k;
 integer n;
 real result;
 
-function get_matrix1_element(i: integer, j: integer): real
+function getmatrix1element(i: integer, j: integer): real
 begin
     if i = 1 and j = 1 then return 1.0;
     if i = 1 and j = 2 then return 2.0;
@@ -18,7 +18,7 @@ begin
     return 0.0;
 end
 
-function get_matrix2_element(i: integer, j: integer): real
+function getmatrix2element(i: integer, j: integer): real
 begin
     if i = 1 and j = 1 then return 9.0;
     if i = 1 and j = 2 then return 8.0;
@@ -32,7 +32,7 @@ begin
     return 0.0;
 end
 
-function multiply_matrices(n: integer): real
+function multiplymatrices(n: integer): real
 integer i, j, k;
 real sum;
 begin
@@ -40,11 +40,11 @@ begin
     for i := 1 to n do
         for j := 1 to n do
             for k := 1 to n do
-                sum := sum + (get_matrix1_element(i, k) * get_matrix2_element(k, j));
+                sum := sum + (getmatrix1element(i, k) * getmatrix2element(k, j));
     return sum;
 end
 
 begin
     n := 3;
-    result := multiply_matrices(n);
+    result := multiplymatrices(n);
 end

@@ -15,5 +15,4 @@ they have been written to test the lexer against and can be found in the `lexer/
 - [x] Add Manual Lexer Output for the Lexer to be checked against.
 - [x] Add Symbol Table Functionality using hashtable implementation.
 - [x] Integrate Symbol Table into lexer.
-- [ ] Add proper pattern rules to flex program.
-- [ ] Add github pages for testcase check automataion.
+- [x] Add proper pattern rules to flex program.

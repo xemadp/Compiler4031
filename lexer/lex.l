@@ -17,7 +17,7 @@ digit            [0-9]
 integer          0|[1-9][0-9]*
 leadingInt       [0]+{integer}
 optionalFrac     (\.{digit}+)
-optionalExp      ([E][+-]?{integer})
+optionalExp      ([E][+-]?{digit}+)
 real             {integer}{optionalFrac}{optionalExp}|{integer}{optionalFrac}|{integer}{optionalExp}
 leadingReal      [0]+{real}
 id               [a-zA-Z][a-zA-Z0-9]*
@@ -55,7 +55,7 @@ wrongID          {digit}+{id}
 "-"                { fprintf(output, "%s\t\t <SUB_OP, ->\n", yytext);}         
 "<"                { fprintf(output, "%s\t\t <LT_OP, ->\n", yytext);}         
 "<="               { fprintf(output, "%s\t\t <LE_OP, ->\n", yytext);}         
-"<>\n"             { fprintf(output, "%s\t\t <NE_OP, ->", yytext);}         
+"<>"               { fprintf(output, "%s\t\t <NE_OP, ->\n", yytext);}         
 "="                { fprintf(output, "%s\t\t <EQ_OP, ->\n", yytext);}         
 ">="               { fprintf(output, "%s\t\t <GE_OP, ->\n", yytext);}         
 ">"                { fprintf(output, "%s\t\t <GT_OP, ->\n", yytext);}         
@@ -151,4 +151,3 @@ int main(void) {
     fclose(output); // Close the output file
     return 0;
 }
-

@@ -17,29 +17,32 @@ The Parser is made using `bison` and has the symtab.c integrated in it to manage
 Intermediate representation will be done in the parser phase of compiler, as a rule is being reduced, we can generate the quadruple for that IR there.
 This ofcourse will need access to Symbol Table and good ST management.
 Here is a diagram showcasing how the three address codes can be : 
-```txt
-    
-        <Three Address Codes>
-                 |
-                 |
-      <Assignment Operations>
-             /       \
-            /         \
-           /           \
-          /             \
-         /               \
-        /                 \
-       /                   \
-<Copy Assignments>    <Binary Assignments>
-     |                       |
-     |                       |
- [t = 12]               [t = 12 * 12]   
-  [t = a]                 [t = a + b]
-    .                    [t = a + 12]
-    .                    [t = 12 * b]
-    .                        .
-                             .
-                             .
+```mermaid
+graph TD
+    A[Three Address Codes]
+    B[Assignment Operations]
+    C[Copy Assignments]
+    D[Binary Assignments]
+    E1["t = 12"]
+    E2["t = a"]
+    E3["..."]
+    F1["t = 12 * 12"]
+    F2["t = a + b"]
+    F3["t = a + 12"]
+    F4["t = 12 * b"]
+    F5["..."]
+
+    A --> B
+    B --> C
+    B --> D
+    C --> E1
+    C --> E2
+    C --> E3
+    D --> F1
+    D --> F2
+    D --> F3
+    D --> F4
+    D --> F5
 ```
 
 Also we can utilize a system of Linked lists in order to show the relation between the quadruples, here is an example: 

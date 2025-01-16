@@ -8,6 +8,71 @@ A symbol table is contained within the implementation of this lexer, to help wit
 # Parser
 The Parser is made using `bison` and has the symtab.c integrated in it to manage identifiers upon declarations.
 
+
+# Symbol Table
+
+
+# Intermediate Representation
+
+Intermediate representation will be done in the parser phase of compiler, as a rule is being reduced, we can generate the quadruple for that IR there.
+This ofcourse will need access to Symbol Table and good ST management.
+Here is a diagram showcasing how the three address codes can be : 
+```txt
+    
+        <Three Address Codes>
+                 |
+                 |
+      <Assignment Operations>
+             /       \
+            /         \
+           /           \
+          /             \
+         /               \
+        /                 \
+       /                   \
+<Copy Assignments>    <Binary Assignments>
+     |                       |
+     |                       |
+ [t = 12]               [t = 12 * 12]   
+ [t = a]                [t = a + b]
+    .                   [t = a + 12]
+    .                   [t = 12 * b]
+    .                        .
+                             .
+                             .
+```
+
+Also we can utilize a system of Linked lists in order to show the relation between the quadruples, here is an example: 
+
+input: 
+```
+a := 2 + c * 12
+```
+
+hence the quadruples are created in order :
+```
+Three Adress codes         Quadruples
+t1 = c * 12        <->   (*, c, 12, t1) -> Binary Assignment
+t2 = 12 + t1       <->   (+, 12, t1, t2) -> Binary Assignment
+a  = t2            <->   (=, t2, -, a) -> Copy Assignment
+```
+Now Consider this linked list: 
+
+```
+(*, c, 12, t1) -> (+, 12, t1, t2) -> (=, t2, -, a) -> NULL
+```
+
+we can see that the three adress codes can be created seemlessly from this Linked List.
+Within our implementation we will be identifying and creating the Quadruples, then placing them in SymbolTable.
+The quadruple q can be later be adressed by q.result. doing this means we link them at each step.
+In the end, we enumerate the linked lists and then print the corresponding listing of three adress codes.
+
+```
+t1 = c * 12 
+t2 = 12 + t1     <-> a := 2 + c * 12
+a  = t2     
+```
+
 ## Test Cases
 Some Programs written using the program specification, to use for Lexer.
 they have been written to test the lexer against and can be found in the `lexer/TestCases` directory.

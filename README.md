@@ -14,6 +14,12 @@ they have been written to test the lexer against and can be found in the `lexer/
 
 # TODO
 
+
+- [] Implement Intermediate Code Generation into parser, translate.y
+    - [] Create a Struct to represent quadruples in symtab.h
+    - [] Create a way to connect quadruples together -> Linked Lists.
+    - [] Everytime a reduction is performed, create and add the corresponding quadruple into Symbol Table.
+    - [] In the end, create a way to move through all the quadruples in order and print them into an output.txt file
 - [x] Write Syntax Analyzer Generator in yacc/bison.
 - [x] Change and Integrate Symbol Table in parser.
 - [x] Write Lexical Analyzer Generator in lex/flex.

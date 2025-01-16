@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# Configuration script for parser project
+
+# Check for required programs
+echo "Checking for required programs..."
+
+# Check for GCC
+if ! command -v gcc >/dev/null 2>&1; then
+    echo "Error: gcc compiler not found"
+    exit 1
+fi
+echo "Found gcc: $(which gcc)"
+
+# Check for Bison
+if ! command -v bison >/dev/null 2>&1; then
+    echo "Error: bison not found"
+    exit 1
+fi
+echo "Found bison: $(which bison)"
+
+# Check for Flex
+if ! command -v flex >/dev/null 2>&1; then
+    echo "Error: flex not found"
+    exit 1
+fi
+echo "Found flex: $(which flex)"
+
+# Check for required headers
+echo "Checking for required headers..."
+for header in stdio.h stdlib.h string.h; do
+    if ! echo "#include <$header>" | gcc -E - >/dev/null 2>&1; then
+        echo "Error: Required header $header not found"
+        exit 1
+    fi
+    echo "Found header: $header"
+done
+
+echo "Configuration completed successfully!"
+echo "You can now run 'make' to build the project."
+
+# Make the configure script executable
+chmod +x configure

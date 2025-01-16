@@ -3,135 +3,178 @@
 #include <string.h>
 #include "symtab.h"
 
-#define TABLE_SIZE 10000  // Prime number to help with distribution.
-#define LOAD_FACTOR 0.7 // Load Factor, to know when to resize.
+/* Constants for hash table management */
+#define INITIAL_SIZE 101        // Prime number for better distribution
+#define MAX_LOAD_FACTOR 0.7     // Resize when table is 70% full
+#define GROWTH_FACTOR 2         // Double size when resizing
 
+/* Private function declarations */
+static unsigned int hash_function(const char *str, int scope_id, int table_size);
+static bool symtab_resize(SymbolTable *symtab);
 
-// Hash Function: return hash value for a string
-unsigned int hash(const char *key, int table_size) {
+/* Hash function using Jenkins hash for better distribution */
+static unsigned int hash_function(const char *str, int scope_id, int table_size) {
     unsigned int hash = 0;
-    for (int i = 0; key[i] != '\0'; i++){
-        hash = (hash + key[i]) % table_size;
+    
+    // Hash the string
+    while (*str) {
+        hash += *str++;
+        hash += (hash << 10);
+        hash ^= (hash >> 6);
+    }
+    
+    // Incorporate scope information
+    hash += scope_id;
+    hash += (hash << 10);
+    hash ^= (hash >> 6);
+    
+    hash += (hash << 3);
+    hash ^= (hash >> 11);
+    hash += (hash << 15);
+    
+    return hash % table_size;
+}
+
+/* Create new symbol table */
+SymbolTable* symtab_create(int initial_size) {
+    SymbolTable *symtab = malloc(sizeof(SymbolTable));
+    if (!symtab) return NULL;
+    
+    symtab->table = calloc(initial_size, sizeof(Symbol));
+    if (!symtab->table) {
+        free(symtab);
+        return NULL;
+    }
+    
+    symtab->size = initial_size;
+    symtab->count = 0;
+    symtab->load_factor = MAX_LOAD_FACTOR;
+    
+    return symtab;
+}
+
+/* Resize the hash table when it gets too full */
+static bool symtab_resize(SymbolTable *symtab) {
+    int new_size = symtab->size * GROWTH_FACTOR;
+    Symbol *new_table = calloc(new_size, sizeof(Symbol));
+    if (!new_table) return false;
+    
+    // Rehash all existing entries
+    for (int i = 0; i < symtab->size; i++) {
+        if (symtab->table[i].is_occupied && !symtab->table[i].is_deleted) {
+            unsigned int index = hash_function(symtab->table[i].name, 
+                                            symtab->table[i].scope.scope_id, 
+                                            new_size);
+            
+            // Linear probe for new position
+            while (new_table[index].is_occupied) {
+                index = (index + 1) % new_size;
+            }
+            
+            new_table[index] = symtab->table[i];
         }
-    return hash;
-}
-
-// Create a hash table instance
-HashTable* create_table(int size) {
-    HashTable *table = malloc(sizeof(HashTable));
-    table->symbols = calloc(size, sizeof(Symbol)); // Set all entries to 0 initially.
-    table->size = size;
-    table->count = 0;
-    return table;
-}
-
-// resize the hash table when the load factor is reached
-void resize(HashTable *table);
-
-// Insert a pair (key, value) into hash table
-int insert(HashTable *table, const char *key, void* value, SymbolType type, int lineno, int row) {
-    if ((float)table->count / table->size >= LOAD_FACTOR){
-        resize(table);
     }
-
-    unsigned int index = hash(key, table->size);
-
-    while (table->symbols[index].is_occupied == 1){
-        index = (index+1) % table->size; // linear probing.
-    }
-
-    // inset new symbol
-    table->symbols[index].key = strdup(key);
-    table->symbols[index].value = value;
-    table->symbols[index].type = type;
-    table->symbols[index].is_occupied = 1;
-    table->symbols[index].line_num = lineno;
-    table->symbols[index].row = row;
-    table->count++;
-
-
-    return index;
+    
+    free(symtab->table);
+    symtab->table = new_table;
+    symtab->size = new_size;
+    
+    return true;
 }
 
-
-// Search within a hash table.
-Symbol search(HashTable *table, const char *key){
-    unsigned int index = hash(key, table->size);
-
-    while (table->symbols[index].is_occupied != 0){
-        if (table->symbols[index].is_occupied == 1 && strcmp(table->symbols[index].key, key) == 0){
-            return table->symbols[index];
+/* Insert a symbol into the table */
+bool symtab_insert(SymbolTable *symtab, const Symbol *symbol) {
+    // Check load factor and resize if necessary
+    if ((float)symtab->count / symtab->size >= symtab->load_factor) {
+        if (!symtab_resize(symtab)) return false;
+    }
+    
+    unsigned int index = hash_function(symbol->name, symbol->scope.scope_id, symtab->size);
+    
+    // Linear probe for empty slot or tombstone
+    while (symtab->table[index].is_occupied && !symtab->table[index].is_deleted) {
+        // Check for duplicate in same scope
+        if (strcmp(symtab->table[index].name, symbol->name) == 0 &&
+            symtab->table[index].scope.scope_id == symbol->scope.scope_id) {
+            return false;  // Symbol already exists in this scope
         }
-        index = (index+1) % table->size; // linear
+        index = (index + 1) % symtab->size;
     }
-   
-    // Return an "empty" symbol if not found
-    Symbol empty_symbol = {NULL, 0, NULL, -1, -1, 0};  // Create an empty Symbol with no key and no value
-    return empty_symbol;
+    
+    // Deep copy the symbol
+    symtab->table[index] = *symbol;
+    symtab->table[index].name = strdup(symbol->name);
+    symtab->table[index].is_occupied = true;
+    symtab->table[index].is_deleted = false;
+    symtab->count++;
+    
+    return true;
 }
 
-// delete a key from a hash table.
-void delete(HashTable *table, const char *key){
-    unsigned int index = hash(key, table->size);
+/* Look up a symbol in the table */
+Symbol* symtab_lookup(SymbolTable *symtab, const char *name, int scope_id) {
+    unsigned int index = hash_function(name, scope_id, symtab->size);
+    
+    // Linear probe until we find the symbol or an empty slot
+    while (symtab->table[index].is_occupied) {
+        if (!symtab->table[index].is_deleted &&
+            strcmp(symtab->table[index].name, name) == 0 &&
+            symtab->table[index].scope.scope_id == scope_id) {
+            return &symtab->table[index];
+        }
+        index = (index + 1) % symtab->size;
+    }
+    
+    return NULL;  // Symbol not found
+}
 
-    while (table->symbols[index].is_occupied != 0){
-        if (table->symbols[index].is_occupied == 1 && strcmp(table->symbols[index].key, key) == 0){
-            table->symbols[index].is_occupied = -1; // mark as deleted.
-            free(table->symbols[index].key);
-            table->count--;
+/* Delete a symbol from the table */
+void symtab_delete(SymbolTable *symtab, const char *name, int scope_id) {
+    unsigned int index = hash_function(name, scope_id, symtab->size);
+    
+    while (symtab->table[index].is_occupied) {
+        if (!symtab->table[index].is_deleted &&
+            strcmp(symtab->table[index].name, name) == 0 &&
+            symtab->table[index].scope.scope_id == scope_id) {
+            
+            free(symtab->table[index].name);
+            symtab->table[index].is_deleted = true;
+            symtab->count--;
             return;
         }
-        index = (index+1) % table->size; // linear
+        index = (index + 1) % symtab->size;
     }
 }
 
-
-// Resize the table when the size limit (load factor) is reached.
-void resize(HashTable *table){
-// create a new table with new size.
-    int newSize = table->size *2;
-    Symbol *oldSymbols = table->symbols;
-    int oldSize = table->size;
+/* Clean up the symbol table */
+void symtab_destroy(SymbolTable *symtab) {
+    if (!symtab) return;
     
-    table->symbols = calloc(newSize, sizeof(Symbol));
-    table->size = newSize;
-    table->count = 0;
-
-    //Rehashing all of the occupied symbols
-    for (int i=0; i< oldSize; i++){
-        if (oldSymbols[i].is_occupied == 1){
-            insert(table, oldSymbols[i].key, oldSymbols[i].value, oldSymbols[i].type, oldSymbols[i].line_num, oldSymbols[i].row);
-            free(oldSymbols[i].key); // free the old keys.
+    for (int i = 0; i < symtab->size; i++) {
+        if (symtab->table[i].is_occupied && !symtab->table[i].is_deleted) {
+            free(symtab->table[i].name);
         }
     }
-    free(oldSymbols);
+    
+    free(symtab->table);
+    free(symtab);
 }
 
-// Free the hash table
-void free_table(HashTable *table) {
-    for (int i = 0; i < table->size; i++) {
-        if (table->symbols[i].is_occupied == 1) {
-            free(table->symbols[i].key);  // Free allocated keys
+/* Print the contents of the symbol table (useful for debugging) */
+void symtab_print(SymbolTable *symtab) {
+    printf("\nSymbol Table Contents:\n");
+    printf("--------------------------------------------------\n");
+    printf("%-20s %-10s %-10s %-10s\n", "Name", "Kind", "Type", "Scope");
+    printf("--------------------------------------------------\n");
+    
+    for (int i = 0; i < symtab->size; i++) {
+        if (symtab->table[i].is_occupied && !symtab->table[i].is_deleted) {
+            printf("%-22s %-10d %-10d %-10d\n",
+                   symtab->table[i].name,
+                   symtab->table[i].kind,
+                   symtab->table[i].type,
+                   symtab->table[i].scope.scope_id);
         }
     }
-    free(table->symbols);  // Free entry array
-    free(table);  // Free table structure
+    printf("--------------------------------------------------\n");
 }
-
-/* Example usage of Hash Table */
-
-/*
-int main(){
-    HashTable *table = create_table(200);
-    // Store the value by allocating memory for it
-    int *value = malloc(sizeof(int));
-    *value = 12;
-    insert(table, "x", value);
-    
-    Symbol klid = search(table, "x");
-    int s = *(int*)klid.value;
-    printf("Retrieved value: %d\n", s);
-    free_table(table);
-    return 0;
-}
-*/

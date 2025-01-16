@@ -1,0 +1,20 @@
+program prg1;
+
+integer num, divisor,quotient;
+begin
+	num := 61E-0002;
+	divisor := 2E02;
+	quotient := 0.12E12;
+	if num=1E-3 then
+		return false;
+	else if num=2 then
+		return true;
+	while divisor<(num/2) do
+	begin
+		quotient:=num/divisor;
+		if divisor * quotient=num then
+			return false;
+		divisor:=divisor+1;
+	end
+	return true;
+end

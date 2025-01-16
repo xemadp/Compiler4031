@@ -34,9 +34,9 @@ Here is a diagram showcasing how the three address codes can be :
      |                       |
      |                       |
  [t = 12]               [t = 12 * 12]   
- [t = a]                [t = a + b]
-    .                   [t = a + 12]
-    .                   [t = 12 * b]
+  [t = a]                 [t = a + b]
+    .                    [t = a + 12]
+    .                    [t = 12 * b]
     .                        .
                              .
                              .

@@ -83,8 +83,18 @@ void yyerror(const char* s);
 /* Global Variables */
 SymbolTable* symboltable;  
 FILE* output;
-int current_scope = 0;    // Global scope starts at 0
+FILE* TACoutput;
+#define MAX_SCOPES 100 // Maximum number of nested scopes
 DataType current_type;    // Tracks current declaration type
+
+int label_count = 0;
+char label_buffer[20];
+
+/* Function to generate new label */
+char* new_label() {
+    snprintf(label_buffer, sizeof(label_buffer), "L%d", label_count++);
+    return strdup(label_buffer);
+}
 
 /* Symbol Table Management Functions */
 void init_symbol_table() {
@@ -95,10 +105,57 @@ void init_symbol_table() {
     }
 }
 
-void declare_variable(const char* name) {
-    Symbol* existing = symtab_lookup(symboltable, name, current_scope);
-    if (existing) {
-        fprintf(stderr, "Error at line %d: Redeclaration of variable '%s' in current scope\n",
+
+int scope_stack[MAX_SCOPES]; // Stack to hold scope IDs
+int top = -1;                // Index of the top of the stack
+int next_scope_id = 1;       // Unique ID generator
+
+// Push a scope ID onto the stack
+void push_scope(int scope_id) {
+    if (top >= MAX_SCOPES - 1) {
+        fprintf(stderr, "Scope stack overflow\n");
+        exit(EXIT_FAILURE);
+    }
+    scope_stack[++top] = scope_id;
+}
+
+// Pop the top scope ID off the stack
+void pop_scope() {
+    if (top < 0) {
+        fprintf(stderr, "Scope stack underflow\n");
+        exit(EXIT_FAILURE);
+    }
+    top--;
+}
+
+// Get the current scope ID (top of the stack)
+int current_scope() {
+    if (top < 0) {
+        fprintf(stderr, "No active scope\n");
+        exit(EXIT_FAILURE);
+    }
+    return scope_stack[top];
+}
+
+// Enter a new scope
+void enter_scope() {
+    int new_scope_id = next_scope_id++; // Generate a unique ID
+    push_scope(new_scope_id);          // Push the new scope onto the stack
+    //printf("Entered scope %d\n", new_scope_id);
+}
+
+// Exit the current scope
+void exit_scope() {
+    //printf("Exiting scope %d\n", current_scope());
+    pop_scope(); // Pop the current scope from the stack
+}
+
+// function declaration, basically only saves the identifier that is the name of a function.
+// Program name is considered a function name.
+void declare_function(const char* name) {
+    Symbol* existing = symtab_lookup(symboltable, name, current_scope());
+    if (existing && existing->kind==SYMBOL_FUNCTION) {
+        fprintf(stderr, "Error at line %d: Redeclaration of function '%s' in current scope\n",
                 yylineno, name);
         return;
     }
@@ -106,8 +163,31 @@ void declare_variable(const char* name) {
     Symbol new_symbol = {
         .name = strdup(name),
         .type = current_type,
+        .kind = SYMBOL_FUNCTION,
+        .scope = current_scope(),
+        .line_number = yylineno,
+        .is_initialized = false
+    };
+    
+    if (!symtab_insert(symboltable, &new_symbol)) {
+        fprintf(stderr, "Error at line %d: Failed to insert function name '%s' into symbol table\n",
+                yylineno, name);
+        free(new_symbol.name);
+    }
+}
+
+void declare_variable(const char* name) {
+    Symbol* existing = symtab_lookup(symboltable, name, current_scope());
+    if (existing) {
+        fprintf(stderr, "Error at line %d: Redeclaration of variable '%s' in current scope\n",
+                yylineno, name);
+        return;
+    }
+    Symbol new_symbol = {
+        .name = strdup(name),
+        .type = current_type,
         .kind = SYMBOL_VARIABLE,
-        .scope = current_scope,
+        .scope = current_scope(),
         .line_number = yylineno,
         .is_initialized = false
     };
@@ -119,20 +199,13 @@ void declare_variable(const char* name) {
     }
 }
 
-void enter_scope() {
-    current_scope++;
-}
-
-void exit_scope() {
-    current_scope--;
-}
-
+// Print Current reduction
 void print_reduction(int rule_num, const char* rule_text) {
     fprintf(output, "%d\t%s\n", rule_num, rule_text);
 }
 
 
-#line 136 "translate.tab.c"
+#line 209 "translate.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -180,26 +253,26 @@ enum yysymbol_kind_t
   YYSYMBOL_RETURN_KW = 17,                 /* RETURN_KW  */
   YYSYMBOL_AND_KW = 18,                    /* AND_KW  */
   YYSYMBOL_OR_KW = 19,                     /* OR_KW  */
-  YYSYMBOL_TRUE_KW = 20,                   /* TRUE_KW  */
-  YYSYMBOL_FALSE_KW = 21,                  /* FALSE_KW  */
-  YYSYMBOL_ASSIGN_OP = 22,                 /* ASSIGN_OP  */
-  YYSYMBOL_MUL_OP = 23,                    /* MUL_OP  */
-  YYSYMBOL_DIV_OP = 24,                    /* DIV_OP  */
-  YYSYMBOL_ADD_OP = 25,                    /* ADD_OP  */
-  YYSYMBOL_SUB_OP = 26,                    /* SUB_OP  */
-  YYSYMBOL_LT_OP = 27,                     /* LT_OP  */
-  YYSYMBOL_LE_OP = 28,                     /* LE_OP  */
-  YYSYMBOL_NE_OP = 29,                     /* NE_OP  */
-  YYSYMBOL_EQ_OP = 30,                     /* EQ_OP  */
-  YYSYMBOL_GE_OP = 31,                     /* GE_OP  */
-  YYSYMBOL_GT_OP = 32,                     /* GT_OP  */
-  YYSYMBOL_COLON = 33,                     /* COLON  */
-  YYSYMBOL_SEMICOLON = 34,                 /* SEMICOLON  */
-  YYSYMBOL_COMMA = 35,                     /* COMMA  */
-  YYSYMBOL_LEFT_PA = 36,                   /* LEFT_PA  */
-  YYSYMBOL_RIGHT_PA = 37,                  /* RIGHT_PA  */
-  YYSYMBOL_INTEGER_NUMBER = 38,            /* INTEGER_NUMBER  */
-  YYSYMBOL_REAL_NUMBER = 39,               /* REAL_NUMBER  */
+  YYSYMBOL_ASSIGN_OP = 20,                 /* ASSIGN_OP  */
+  YYSYMBOL_MUL_OP = 21,                    /* MUL_OP  */
+  YYSYMBOL_DIV_OP = 22,                    /* DIV_OP  */
+  YYSYMBOL_ADD_OP = 23,                    /* ADD_OP  */
+  YYSYMBOL_SUB_OP = 24,                    /* SUB_OP  */
+  YYSYMBOL_LT_OP = 25,                     /* LT_OP  */
+  YYSYMBOL_LE_OP = 26,                     /* LE_OP  */
+  YYSYMBOL_NE_OP = 27,                     /* NE_OP  */
+  YYSYMBOL_EQ_OP = 28,                     /* EQ_OP  */
+  YYSYMBOL_GE_OP = 29,                     /* GE_OP  */
+  YYSYMBOL_GT_OP = 30,                     /* GT_OP  */
+  YYSYMBOL_COLON = 31,                     /* COLON  */
+  YYSYMBOL_SEMICOLON = 32,                 /* SEMICOLON  */
+  YYSYMBOL_COMMA = 33,                     /* COMMA  */
+  YYSYMBOL_LEFT_PA = 34,                   /* LEFT_PA  */
+  YYSYMBOL_RIGHT_PA = 35,                  /* RIGHT_PA  */
+  YYSYMBOL_INTEGER_NUMBER = 36,            /* INTEGER_NUMBER  */
+  YYSYMBOL_REAL_NUMBER = 37,               /* REAL_NUMBER  */
+  YYSYMBOL_TRUE_KW = 38,                   /* TRUE_KW  */
+  YYSYMBOL_FALSE_KW = 39,                  /* FALSE_KW  */
   YYSYMBOL_IDENTIFIER = 40,                /* IDENTIFIER  */
   YYSYMBOL_YYACCEPT = 41,                  /* $accept  */
   YYSYMBOL_start = 42,                     /* start  */
@@ -214,9 +287,14 @@ enum yysymbol_kind_t
   YYSYMBOL_block = 51,                     /* block  */
   YYSYMBOL_stmtList = 52,                  /* stmtList  */
   YYSYMBOL_stmt = 53,                      /* stmt  */
-  YYSYMBOL_expr = 54,                      /* expr  */
-  YYSYMBOL_actualParamList = 55,           /* actualParamList  */
-  YYSYMBOL_relop = 56                      /* relop  */
+  YYSYMBOL_54_2 = 54,                      /* @2  */
+  YYSYMBOL_55_3 = 55,                      /* @3  */
+  YYSYMBOL_56_4 = 56,                      /* @4  */
+  YYSYMBOL_if_body = 57,                   /* if_body  */
+  YYSYMBOL_58_5 = 58,                      /* $@5  */
+  YYSYMBOL_expr = 59,                      /* expr  */
+  YYSYMBOL_actualParamList = 60,           /* actualParamList  */
+  YYSYMBOL_relop = 61                      /* relop  */
 };
 typedef enum yysymbol_kind_t yysymbol_kind_t;
 
@@ -544,16 +622,16 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  4
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   244
+#define YYLAST   167
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  41
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  16
+#define YYNNTS  21
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  49
+#define YYNRULES  54
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  97
+#define YYNSTATES  102
 
 /* YYMAXUTOK -- Last valid token kind.  */
 #define YYMAXUTOK   295
@@ -606,11 +684,12 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   101,   101,    99,   112,   116,   123,   128,   134,   139,
-     144,   152,   157,   166,   171,   177,   184,   191,   198,   202,
-     209,   213,   217,   221,   225,   229,   233,   240,   244,   248,
-     252,   256,   260,   264,   268,   272,   276,   280,   284,   288,
-     292,   299,   303,   308,   314,   318,   322,   326,   330,   334
+       0,   177,   177,   176,   190,   194,   201,   206,   212,   218,
+     223,   231,   236,   245,   250,   256,   264,   271,   278,   282,
+     289,   298,   297,   346,   345,   377,   376,   436,   440,   447,
+     452,   451,   469,   479,   489,   500,   510,   521,   531,   541,
+     546,   551,   556,   561,   566,   570,   578,   582,   587,   593,
+     597,   601,   605,   609,   613
 };
 #endif
 
@@ -629,13 +708,13 @@ static const char *const yytname[] =
   "\"end of file\"", "error", "\"invalid token\"", "PROGRAM_KW",
   "FUNCTION_KW", "BEGIN_KW", "END_KW", "IF_KW", "WHILE_KW", "DO_KW",
   "FOR_KW", "TO_KW", "THEN_KW", "ELSE_KW", "INTEGER_KW", "REAL_KW",
-  "BOOLEAN_KW", "RETURN_KW", "AND_KW", "OR_KW", "TRUE_KW", "FALSE_KW",
-  "ASSIGN_OP", "MUL_OP", "DIV_OP", "ADD_OP", "SUB_OP", "LT_OP", "LE_OP",
-  "NE_OP", "EQ_OP", "GE_OP", "GT_OP", "COLON", "SEMICOLON", "COMMA",
-  "LEFT_PA", "RIGHT_PA", "INTEGER_NUMBER", "REAL_NUMBER", "IDENTIFIER",
+  "BOOLEAN_KW", "RETURN_KW", "AND_KW", "OR_KW", "ASSIGN_OP", "MUL_OP",
+  "DIV_OP", "ADD_OP", "SUB_OP", "LT_OP", "LE_OP", "NE_OP", "EQ_OP",
+  "GE_OP", "GT_OP", "COLON", "SEMICOLON", "COMMA", "LEFT_PA", "RIGHT_PA",
+  "INTEGER_NUMBER", "REAL_NUMBER", "TRUE_KW", "FALSE_KW", "IDENTIFIER",
   "$accept", "start", "$@1", "decList", "decs", "type", "varList",
-  "funcList", "funcDec", "parameters", "block", "stmtList", "stmt", "expr",
-  "actualParamList", "relop", YY_NULLPTR
+  "funcList", "funcDec", "parameters", "block", "stmtList", "stmt", "@2",
+  "@3", "@4", "if_body", "$@5", "expr", "actualParamList", "relop", YY_NULLPTR
 };
 
 static const char *
@@ -645,7 +724,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-29)
+#define YYPACT_NINF (-32)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -659,16 +738,17 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
-       9,   -15,    16,   -29,   -29,    -6,     4,   -29,   -29,   -29,
-     -29,     4,    -3,    10,   -29,   -29,   -12,    -1,    37,   -29,
-     -29,   -29,     6,    13,    32,    32,     8,    32,    28,   -29,
-       0,   -29,   -29,     4,    18,   -29,   -29,    32,   -29,   -29,
-      19,   123,    56,    34,   153,    32,   -29,   -29,    20,     4,
-     138,    32,    37,    32,    32,    32,    32,    32,    32,   -29,
-     -29,   -29,   -29,   -29,   -29,    32,    37,    32,   -29,   170,
-     -29,     4,   -29,   187,   -26,    45,   212,   202,   -29,   -29,
-      12,    12,   187,   -29,   102,   -29,    54,    32,   -29,    37,
-      32,   -29,   187,   -29,    80,    37,   -29
+      12,   -31,    21,   -32,   -32,    -5,     4,   -32,   -32,   -32,
+     -32,     4,    -1,    31,   -32,   -32,     5,     1,     6,   -32,
+     -32,   -32,     3,    19,    11,    11,    17,    11,    38,   -32,
+       0,   -32,   -32,     4,    28,    11,   -32,   -32,   -32,   -32,
+      26,   114,   114,    41,    84,    11,   -32,   -32,    27,     4,
+      69,    11,    11,    11,    11,    11,    11,    11,   -32,   -32,
+     -32,   -32,   -32,   -32,    53,    11,    57,    11,   -32,    99,
+     -32,     4,   -32,   114,    -9,   137,   127,   -32,   -32,    34,
+      34,     6,   114,     6,    56,   -32,    65,    11,   -32,    59,
+     -32,   -32,    11,   -32,   114,   -32,   114,     6,    67,   -32,
+       6,   -32
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -678,28 +758,31 @@ static const yytype_int8 yydefact[] =
 {
        0,     0,     0,     2,     1,     0,     7,     8,     9,    10,
       14,     4,     0,     0,     5,    11,     0,     0,     0,    13,
-       3,     6,     0,     0,     0,     0,     0,     0,     0,    26,
-       0,    18,    12,     7,     0,    37,    38,     0,    35,    36,
-      40,     0,     0,     0,     0,     0,    17,    19,     0,     0,
-       0,    43,     0,     0,     0,     0,     0,     0,     0,    44,
-      45,    47,    46,    48,    49,     0,     0,     0,    25,     0,
-      16,     7,    34,    41,     0,    21,    27,    28,    29,    30,
-      31,    32,    33,    23,     0,    20,     0,     0,    39,     0,
-       0,    15,    42,    22,     0,     0,    24
+       3,     6,     0,     0,     0,     0,     0,     0,     0,    28,
+       0,    18,    12,     7,     0,     0,    40,    41,    42,    43,
+      45,    21,    23,     0,     0,     0,    17,    19,     0,     0,
+       0,    48,     0,     0,     0,     0,     0,     0,    49,    50,
+      52,    51,    53,    54,     0,     0,     0,     0,    27,     0,
+      16,     7,    39,    46,     0,    32,    33,    34,    35,    36,
+      37,     0,    38,     0,     0,    20,     0,     0,    44,    29,
+      22,    24,     0,    15,    47,    30,    25,     0,     0,    31,
+       0,    26
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-     -29,   -29,   -29,    -7,   -29,    11,   -29,   -29,   -29,   -29,
-     -13,   -29,   -28,   -24,   -29,   -29
+     -32,   -32,   -32,    -8,   -32,    40,   -32,   -32,   -32,   -32,
+     -13,   -32,   -29,   -32,   -32,   -32,   -32,   -32,   -23,   -32,
+     -32
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
        0,     2,     5,    10,    11,    12,    16,    13,    19,    34,
-      29,    30,    31,    41,    74,    65
+      29,    30,    31,    64,    66,    98,    90,    97,    41,    74,
+      65
 };
 
 /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -707,76 +790,61 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-      20,    42,    47,    44,    14,    18,    46,    24,    25,    87,
-      26,    88,     1,    50,    17,    18,     4,    27,     7,     8,
-       9,    69,    21,    22,    75,     3,    48,    73,     6,    76,
-      77,    78,    79,    80,    81,    55,    56,    15,    83,    23,
-      28,    82,    18,    84,    24,    25,    32,    26,    43,    33,
-      45,    49,    35,    36,    27,    51,    67,    70,    89,    18,
-      71,    93,     0,    92,    86,    66,    94,    96,    37,     0,
-      38,    39,    40,    91,    53,    54,     0,    28,     0,    55,
-      56,    57,    58,    59,    60,    61,    62,    63,    64,    95,
-       0,     0,     0,     0,     0,     0,     0,     0,    53,    54,
-       0,     0,     0,    55,    56,    57,    58,    59,    60,    61,
-      62,    63,    64,    90,     0,     0,     0,     0,     0,     0,
-      53,    54,     0,     0,     0,    55,    56,    57,    58,    59,
-      60,    61,    62,    63,    64,    52,     0,     0,     0,     0,
-       0,    53,    54,     0,     0,     0,    55,    56,    57,    58,
-      59,    60,    61,    62,    63,    64,    53,    54,     0,     0,
-       0,    55,    56,    57,    58,    59,    60,    61,    62,    63,
-      64,    53,    54,     0,     0,    72,    55,    56,    57,    58,
-      59,    60,    61,    62,    63,    64,     0,    68,    53,    54,
-       0,     0,     0,    55,    56,    57,    58,    59,    60,    61,
-      62,    63,    64,     0,    85,    53,    54,     0,     0,     0,
-      55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
-      53,     0,     0,     0,     0,    55,    56,    57,    58,    59,
-      60,    61,    62,    63,    64,    55,    56,    57,    58,    59,
-      60,    61,    62,    63,    64
+      20,    47,    42,    14,    44,    18,    46,    24,    25,     3,
+      26,    18,    50,    24,    25,     1,    26,    27,     7,     8,
+       9,     4,    69,    27,    87,    48,    88,     6,    73,    75,
+      76,    77,    78,    79,    80,    17,    18,    21,    22,    15,
+      28,    23,    82,    32,    84,    35,    28,    36,    37,    38,
+      39,    40,    89,    33,    91,    54,    55,    43,    45,    49,
+      51,    67,    70,    86,    94,    81,    83,    92,    99,    96,
+      18,   101,    95,    93,    52,    53,   100,    54,    55,    56,
+      57,    58,    59,    60,    61,    62,    63,    52,    53,    71,
+      54,    55,    56,    57,    58,    59,    60,    61,    62,    63,
+       0,     0,    52,    53,    72,    54,    55,    56,    57,    58,
+      59,    60,    61,    62,    63,     0,    68,    52,    53,     0,
+      54,    55,    56,    57,    58,    59,    60,    61,    62,    63,
+       0,    85,    52,    53,     0,    54,    55,    56,    57,    58,
+      59,    60,    61,    62,    63,    52,     0,     0,    54,    55,
+      56,    57,    58,    59,    60,    61,    62,    63,    54,    55,
+      56,    57,    58,    59,    60,    61,    62,    63
 };
 
 static const yytype_int8 yycheck[] =
 {
-      13,    25,    30,    27,    11,     5,     6,     7,     8,    35,
-      10,    37,     3,    37,     4,     5,     0,    17,    14,    15,
-      16,    45,    34,    35,    52,    40,    33,    51,    34,    53,
-      54,    55,    56,    57,    58,    23,    24,    40,    66,    40,
-      40,    65,     5,    67,     7,     8,    40,    10,    40,    36,
-      22,    33,    20,    21,    17,    36,    22,    37,    13,     5,
-      49,    89,    -1,    87,    71,     9,    90,    95,    36,    -1,
-      38,    39,    40,    86,    18,    19,    -1,    40,    -1,    23,
-      24,    25,    26,    27,    28,    29,    30,    31,    32,     9,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    18,    19,
-      -1,    -1,    -1,    23,    24,    25,    26,    27,    28,    29,
-      30,    31,    32,    11,    -1,    -1,    -1,    -1,    -1,    -1,
-      18,    19,    -1,    -1,    -1,    23,    24,    25,    26,    27,
-      28,    29,    30,    31,    32,    12,    -1,    -1,    -1,    -1,
-      -1,    18,    19,    -1,    -1,    -1,    23,    24,    25,    26,
-      27,    28,    29,    30,    31,    32,    18,    19,    -1,    -1,
-      -1,    23,    24,    25,    26,    27,    28,    29,    30,    31,
-      32,    18,    19,    -1,    -1,    37,    23,    24,    25,    26,
-      27,    28,    29,    30,    31,    32,    -1,    34,    18,    19,
-      -1,    -1,    -1,    23,    24,    25,    26,    27,    28,    29,
-      30,    31,    32,    -1,    34,    18,    19,    -1,    -1,    -1,
-      23,    24,    25,    26,    27,    28,    29,    30,    31,    32,
-      18,    -1,    -1,    -1,    -1,    23,    24,    25,    26,    27,
-      28,    29,    30,    31,    32,    23,    24,    25,    26,    27,
-      28,    29,    30,    31,    32
+      13,    30,    25,    11,    27,     5,     6,     7,     8,    40,
+      10,     5,    35,     7,     8,     3,    10,    17,    14,    15,
+      16,     0,    45,    17,    33,    33,    35,    32,    51,    52,
+      53,    54,    55,    56,    57,     4,     5,    32,    33,    40,
+      40,    40,    65,    40,    67,    34,    40,    36,    37,    38,
+      39,    40,    81,    34,    83,    21,    22,    40,    20,    31,
+      34,    20,    35,    71,    87,    12,     9,    11,    97,    92,
+       5,   100,    13,    86,    18,    19,     9,    21,    22,    23,
+      24,    25,    26,    27,    28,    29,    30,    18,    19,    49,
+      21,    22,    23,    24,    25,    26,    27,    28,    29,    30,
+      -1,    -1,    18,    19,    35,    21,    22,    23,    24,    25,
+      26,    27,    28,    29,    30,    -1,    32,    18,    19,    -1,
+      21,    22,    23,    24,    25,    26,    27,    28,    29,    30,
+      -1,    32,    18,    19,    -1,    21,    22,    23,    24,    25,
+      26,    27,    28,    29,    30,    18,    -1,    -1,    21,    22,
+      23,    24,    25,    26,    27,    28,    29,    30,    21,    22,
+      23,    24,    25,    26,    27,    28,    29,    30
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
    state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,     3,    42,    40,     0,    43,    34,    14,    15,    16,
+       0,     3,    42,    40,     0,    43,    32,    14,    15,    16,
       44,    45,    46,    48,    44,    40,    47,     4,     5,    49,
-      51,    34,    35,    40,     7,     8,    10,    17,    40,    51,
-      52,    53,    40,    36,    50,    20,    21,    36,    38,    39,
-      40,    54,    54,    40,    54,    22,     6,    53,    44,    33,
-      54,    36,    12,    18,    19,    23,    24,    25,    26,    27,
-      28,    29,    30,    31,    32,    56,     9,    22,    34,    54,
-      37,    46,    37,    54,    55,    53,    54,    54,    54,    54,
-      54,    54,    54,    53,    54,    34,    44,    35,    37,    13,
-      11,    51,    54,    53,    54,     9,    53
+      51,    32,    33,    40,     7,     8,    10,    17,    40,    51,
+      52,    53,    40,    34,    50,    34,    36,    37,    38,    39,
+      40,    59,    59,    40,    59,    20,     6,    53,    44,    31,
+      59,    34,    18,    19,    21,    22,    23,    24,    25,    26,
+      27,    28,    29,    30,    54,    61,    55,    20,    32,    59,
+      35,    46,    35,    59,    60,    59,    59,    59,    59,    59,
+      59,    12,    59,     9,    59,    32,    44,    33,    35,    53,
+      57,    53,    11,    51,    59,    13,    59,    58,    56,    53,
+       9,    53
 };
 
 /* YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.  */
@@ -784,9 +852,10 @@ static const yytype_int8 yyr1[] =
 {
        0,    41,    43,    42,    44,    44,    45,    45,    46,    46,
       46,    47,    47,    48,    48,    49,    50,    51,    52,    52,
-      53,    53,    53,    53,    53,    53,    53,    54,    54,    54,
-      54,    54,    54,    54,    54,    54,    54,    54,    54,    54,
-      54,    55,    55,    55,    56,    56,    56,    56,    56,    56
+      53,    54,    53,    55,    53,    56,    53,    53,    53,    57,
+      58,    57,    59,    59,    59,    59,    59,    59,    59,    59,
+      59,    59,    59,    59,    59,    59,    60,    60,    60,    61,
+      61,    61,    61,    61,    61
 };
 
 /* YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.  */
@@ -794,9 +863,10 @@ static const yytype_int8 yyr2[] =
 {
        0,     2,     0,     7,     1,     2,     3,     0,     1,     1,
        1,     1,     3,     2,     0,     7,     3,     3,     1,     2,
-       4,     4,     6,     4,     8,     3,     1,     3,     3,     3,
-       3,     3,     3,     3,     3,     1,     1,     1,     1,     4,
-       1,     1,     3,     0,     1,     1,     1,     1,     1,     1
+       4,     0,     5,     0,     5,     0,     9,     3,     1,     1,
+       0,     4,     3,     3,     3,     3,     3,     3,     3,     3,
+       1,     1,     1,     1,     4,     1,     1,     3,     0,     1,
+       1,     1,     1,     1,     1
 };
 
 
@@ -1260,396 +1330,617 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* $@1: %empty  */
-#line 101 "translate.y"
+#line 177 "translate.y"
     {
-    declare_variable((yyvsp[0].id_name));
-}
-#line 1268 "translate.tab.c"
+    enter_scope();
+    declare_function((yyvsp[0].id_name));
+    }
+#line 1339 "translate.tab.c"
     break;
 
   case 3: /* start: PROGRAM_KW IDENTIFIER $@1 SEMICOLON decList funcList block  */
-#line 106 "translate.y"
+#line 183 "translate.y"
     {
         print_reduction(yyn-2, "start -> PROGRAM_KW IDENTIFIER SEMICOLON decList funcList block");
+        exit_scope();
     }
-#line 1276 "translate.tab.c"
+#line 1348 "translate.tab.c"
     break;
 
   case 4: /* decList: decs  */
-#line 113 "translate.y"
+#line 191 "translate.y"
     {
         print_reduction(yyn-2, "decList -> decs");
     }
-#line 1284 "translate.tab.c"
+#line 1356 "translate.tab.c"
     break;
 
   case 5: /* decList: decs decList  */
-#line 117 "translate.y"
+#line 195 "translate.y"
     {
         print_reduction(yyn-2, "decList -> decs decList");
     }
-#line 1292 "translate.tab.c"
+#line 1364 "translate.tab.c"
     break;
 
   case 6: /* decs: type varList SEMICOLON  */
-#line 124 "translate.y"
+#line 202 "translate.y"
     {
         print_reduction(yyn-2, "decs -> type varList SEMICOLON");
     }
-#line 1300 "translate.tab.c"
+#line 1372 "translate.tab.c"
     break;
 
   case 7: /* decs: %empty  */
-#line 128 "translate.y"
+#line 206 "translate.y"
     {
         print_reduction(yyn-2, "decs -> epsilon");
     }
-#line 1308 "translate.tab.c"
+#line 1380 "translate.tab.c"
     break;
 
   case 8: /* type: INTEGER_KW  */
-#line 135 "translate.y"
+#line 213 "translate.y"
     {
         current_type = TYPE_INT;
         print_reduction(yyn-2, "type -> INTEGER_KW");
+        
     }
-#line 1317 "translate.tab.c"
+#line 1390 "translate.tab.c"
     break;
 
   case 9: /* type: REAL_KW  */
-#line 140 "translate.y"
+#line 219 "translate.y"
     {
         current_type = TYPE_REAL;
         print_reduction(yyn-2, "type -> REAL_KW");
     }
-#line 1326 "translate.tab.c"
+#line 1399 "translate.tab.c"
     break;
 
   case 10: /* type: BOOLEAN_KW  */
-#line 145 "translate.y"
+#line 224 "translate.y"
     {
         current_type = TYPE_BOOL;
         print_reduction(yyn-2, "type -> BOOLEAN_KW");
     }
-#line 1335 "translate.tab.c"
+#line 1408 "translate.tab.c"
     break;
 
   case 11: /* varList: IDENTIFIER  */
-#line 153 "translate.y"
+#line 232 "translate.y"
     {
         declare_variable((yyvsp[0].id_name));
         print_reduction(yyn-2, "varList -> IDENTIFIER");
     }
-#line 1344 "translate.tab.c"
+#line 1417 "translate.tab.c"
     break;
 
   case 12: /* varList: varList COMMA IDENTIFIER  */
-#line 158 "translate.y"
+#line 237 "translate.y"
     {
         declare_variable((yyvsp[0].id_name));
         print_reduction(yyn-2, "varList -> varList COMMA IDENTIFIER");
     }
-#line 1353 "translate.tab.c"
+#line 1426 "translate.tab.c"
     break;
 
   case 13: /* funcList: funcList funcDec  */
-#line 167 "translate.y"
+#line 246 "translate.y"
     {
         print_reduction(yyn-2, "funcList -> funcList funcDec");
     }
-#line 1361 "translate.tab.c"
+#line 1434 "translate.tab.c"
     break;
 
   case 14: /* funcList: %empty  */
-#line 171 "translate.y"
+#line 250 "translate.y"
     {
         print_reduction(yyn-2, "funcList -> epsilon");
     }
-#line 1369 "translate.tab.c"
+#line 1442 "translate.tab.c"
     break;
 
   case 15: /* funcDec: FUNCTION_KW IDENTIFIER parameters COLON type decList block  */
-#line 178 "translate.y"
+#line 257 "translate.y"
     {
+        declare_function((yyvsp[-5].id_name));
         print_reduction(yyn-2, "funcDec -> FUNCTION_KW IDENTIFIER parameters COLON type decList block");
     }
-#line 1377 "translate.tab.c"
+#line 1451 "translate.tab.c"
     break;
 
   case 16: /* parameters: LEFT_PA decList RIGHT_PA  */
-#line 185 "translate.y"
+#line 265 "translate.y"
     {
         print_reduction(yyn-2, "parameters -> LEFT_PA decList RIGHT_PA");
     }
-#line 1385 "translate.tab.c"
+#line 1459 "translate.tab.c"
     break;
 
   case 17: /* block: BEGIN_KW stmtList END_KW  */
-#line 192 "translate.y"
+#line 272 "translate.y"
     {
         print_reduction(yyn-2, "block -> BEGIN_KW stmtList END_KW");
     }
-#line 1393 "translate.tab.c"
+#line 1467 "translate.tab.c"
     break;
 
   case 18: /* stmtList: stmt  */
-#line 199 "translate.y"
+#line 279 "translate.y"
     {
         print_reduction(yyn-2, "stmtList -> stmt");
     }
-#line 1401 "translate.tab.c"
+#line 1475 "translate.tab.c"
     break;
 
   case 19: /* stmtList: stmtList stmt  */
-#line 203 "translate.y"
+#line 283 "translate.y"
     {
         print_reduction(yyn-2, "stmtList -> stmtList stmt");
     }
-#line 1409 "translate.tab.c"
+#line 1483 "translate.tab.c"
     break;
 
   case 20: /* stmt: IDENTIFIER ASSIGN_OP expr SEMICOLON  */
-#line 210 "translate.y"
+#line 290 "translate.y"
     {
+        Quadruple quad = create_quadruple(symboltable,":=",(yyvsp[-1].id_name),"", (yyvsp[-3].id_name));
+        add_quadruple(symboltable,quad);
+
+        //printf("%s := %s\n", $1, $3);
         print_reduction(yyn-2, "stmt -> IDENTIFIER ASSIGN_OP expr SEMICOLON");
     }
-#line 1417 "translate.tab.c"
+#line 1495 "translate.tab.c"
     break;
 
-  case 21: /* stmt: IF_KW expr THEN_KW stmt  */
-#line 214 "translate.y"
+  case 21: /* @2: %empty  */
+#line 298 "translate.y"
     {
-        print_reduction(yyn-2, "stmt -> IF_KW expr THEN_KW stmt");
+        char* TRUE_label = new_label();   // if cond is true
+        char* NEXT_label = new_label();  // code after if stmt
+        char* ELSE_label = new_label(); // if cond is not true hence else is true
+        
+        // Create Quadruples
+        Quadruple ifquad = create_quadruple(symboltable,"IF",(yyvsp[0].id_name),"", TRUE_label);
+        //printf("if (%s) goto %s\n", $2, TRUE_label);
+        add_quadruple(symboltable, ifquad);
+
+        Quadruple gotoquad = create_quadruple(symboltable, "GOTO", NEXT_label, "", "");
+        //printf("goto %s\n", NEXT_label);
+        add_quadruple(symboltable, gotoquad);
+
+        Quadruple labelquad = create_quadruple(symboltable, "LABEL", TRUE_label, "", "");
+        //printf("%s : \n", TRUE_label);
+        add_quadruple(symboltable, labelquad);
+        
+        (yyval.label_pair).label1 = NEXT_label;
+        (yyval.label_pair).label2 = ELSE_label;
+        (yyval.label_pair).label3 = TRUE_label;
+        
     }
-#line 1425 "translate.tab.c"
+#line 1523 "translate.tab.c"
     break;
 
-  case 22: /* stmt: IF_KW expr THEN_KW stmt ELSE_KW stmt  */
-#line 218 "translate.y"
-    {
-        print_reduction(yyn-2, "stmt -> IF_KW expr THEN_KW stmt ELSE_KW stmt");
+  case 22: /* stmt: IF_KW expr @2 THEN_KW if_body  */
+#line 322 "translate.y"
+      {
+      if (strcmp((yyvsp[0].id_name),"hasElse")==0){
+          printf("hasElse Check Passed!!!!\n");
+          Quadruple labelquad = create_quadruple(symboltable, "LABEL",(yyvsp[-2].label_pair).label2, "", "");
+          add_quadruple(symboltable, labelquad);
+          //printf("%s : \n", NEXT_label);
+
+          // BACKPATCH THE IF-ELSE LABELS!
+          // Using the  backpatch function from symtab.c here.
+         
+          BackPatchLabels(symboltable, (yyvsp[-2].label_pair).label2, (yyvsp[-2].label_pair).label1);
+      }
+      else
+      {
+          printf("hasElse Check ---NOT--- Passed!!!!\n");
+         Quadruple labelquad = create_quadruple(symboltable, "LABEL",(yyvsp[-2].label_pair).label1, "", "");
+         //printf("%s : \n", NEXT_label);
+         add_quadruple(symboltable, labelquad);
+         //printf("%s : \n", $<label_pair>3.label1);
+        
+      }
+      print_reduction(yyn-2, "stmt -> IF_KW expr THEN_KW stmt ELSE_KW stmt");
     }
-#line 1433 "translate.tab.c"
+#line 1551 "translate.tab.c"
     break;
 
-  case 23: /* stmt: WHILE_KW expr DO_KW stmt  */
-#line 222 "translate.y"
+  case 23: /* @3: %empty  */
+#line 346 "translate.y"
     {
+        char* WHILE_label = new_label(); // before loop starts
+        char* TRUE_label = new_label();   // if loop cond is true
+        char* FALSE_label = new_label();  // if loop cond is false
+        (yyval.label_pair).label1 = WHILE_label;
+        (yyval.label_pair).label2 = FALSE_label;
+
+        Quadruple labelquad = create_quadruple(symboltable, "LABEL", WHILE_label, "", "");
+        add_quadruple(symboltable, labelquad);
+        //printf("%s : \n", WHILE_label);
+        Quadruple ifquad = create_quadruple(symboltable, "IF", (yyvsp[0].id_name), "", TRUE_label);
+        add_quadruple(symboltable, ifquad);
+        //printf("if (%s) goto %s\n", $2, TRUE_label);
+        Quadruple gotoquad = create_quadruple(symboltable, "GOTO", FALSE_label, "", "");
+        add_quadruple(symboltable, gotoquad);
+        //printf("goto %s\n", FALSE_label);
+        Quadruple tlabelquad = create_quadruple(symboltable, "LABEL", TRUE_label, "", "");
+        add_quadruple(symboltable, tlabelquad);
+        //printf("%s : \n", TRUE_label);
+    }
+#line 1576 "translate.tab.c"
+    break;
+
+  case 24: /* stmt: WHILE_KW expr @3 DO_KW stmt  */
+#line 367 "translate.y"
+    {   
+        Quadruple gotoquad = create_quadruple(symboltable, "GOTO",(yyvsp[-2].label_pair).label1, "", "");
+        add_quadruple(symboltable, gotoquad);
+        //printf("goto %s\n", $<label_pair>3.label1);
+        Quadruple flabelquad = create_quadruple(symboltable, "LABEL", (yyvsp[-2].label_pair).label2, "", "");
+        add_quadruple(symboltable, flabelquad);
+        //printf("%s : \n", $<label_pair>3.label2);
         print_reduction(yyn-2, "stmt -> WHILE_KW expr DO_KW stmt");
     }
-#line 1441 "translate.tab.c"
+#line 1590 "translate.tab.c"
     break;
 
-  case 24: /* stmt: FOR_KW IDENTIFIER ASSIGN_OP expr TO_KW expr DO_KW stmt  */
-#line 226 "translate.y"
+  case 25: /* @4: %empty  */
+#line 377 "translate.y"
     {
+        enter_scope();
+        declare_variable((yyvsp[-4].id_name));
+        
+        Quadruple quad = create_quadruple(symboltable,":=",(yyvsp[-2].id_name),"", (yyvsp[-4].id_name));
+        add_quadruple(symboltable, quad);
+        //printf("%s := %s\n", $2, $4);
+
+        char* temp = create_temp(symboltable);
+
+        // Add some quad here first for later
+        Quadruple forCondQuad = create_quadruple(symboltable,"<=",(yyvsp[-4].id_name),(yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, forCondQuad);
+        //printf("%s := %s <= %s\n", temp, $2, $6);
+        
+        char* CONDITION_label = new_label(); // Condition of For loop
+        char* BODY_label = new_label(); // BODY of For loop
+        char* NEXT_label = new_label(); // Code after For loop
+        
+        Quadruple clabelquad = create_quadruple(symboltable, "LABEL", CONDITION_label, "", "");
+        add_quadruple(symboltable, clabelquad);
+        //printf("%s : \n", CONDITION_label);
+
+        Quadruple ifquad = create_quadruple(symboltable, "IF", temp, "", BODY_label);
+        add_quadruple(symboltable, ifquad);
+        //printf("if (%s) goto %s\n", temp, BODY_label);
+
+        Quadruple gotoquad = create_quadruple(symboltable, "GOTO", NEXT_label, "", "");
+        add_quadruple(symboltable, gotoquad);
+        //printf("goto %s\n", NEXT_label);
+
+        Quadruple blabelquad = create_quadruple(symboltable, "LABEL", BODY_label, "", "");
+        add_quadruple(symboltable, blabelquad);
+        //printf("%s : \n", BODY_label);
+
+        (yyval.label_pair).label1 = CONDITION_label;
+        (yyval.label_pair).label2 = strdup((yyvsp[-4].id_name));
+        (yyval.label_pair).label3 = NEXT_label;
+       
+
+    }
+#line 1636 "translate.tab.c"
+    break;
+
+  case 26: /* stmt: FOR_KW IDENTIFIER ASSIGN_OP expr TO_KW expr @4 DO_KW stmt  */
+#line 419 "translate.y"
+    {
+        // for x:= 1 to n do ... -> x := x + 1 in end of for loop before going back to check the for cond.
+        Quadruple forIncrementQuad = create_quadruple(symboltable,"+", (yyvsp[-2].label_pair).label2, "1", (yyvsp[-2].label_pair).label2);
+        add_quadruple(symboltable, forIncrementQuad);
+        //printf("%s := %s + 1 \n", $<label_pair>7.label2, $<label_pair>7.label2);
+
+        Quadruple gotoquad = create_quadruple(symboltable, "GOTO", (yyvsp[-2].label_pair).label1, "", "");
+        add_quadruple(symboltable, gotoquad);
+        //printf("goto %s\n", $<label_pair>7.label1);
+
+        Quadruple nlabelquad = create_quadruple(symboltable, "LABEL",(yyvsp[-2].label_pair).label3, "", "");
+        add_quadruple(symboltable, nlabelquad);
+        //printf("%s : \n", $<label_pair>7.label3);
+
+        exit_scope();
         print_reduction(yyn-2, "stmt -> FOR IDENTIFIER ASSIGN_OP expr TO_KW expr DO_KW stmt");
     }
-#line 1449 "translate.tab.c"
+#line 1658 "translate.tab.c"
     break;
 
-  case 25: /* stmt: RETURN_KW expr SEMICOLON  */
-#line 230 "translate.y"
+  case 27: /* stmt: RETURN_KW expr SEMICOLON  */
+#line 437 "translate.y"
     {
         print_reduction(yyn-2, "stmt -> RETURN_KW expr SEMICOLON");
     }
-#line 1457 "translate.tab.c"
+#line 1666 "translate.tab.c"
     break;
 
-  case 26: /* stmt: block  */
-#line 234 "translate.y"
+  case 28: /* stmt: block  */
+#line 441 "translate.y"
     {
         print_reduction(yyn-2, "stmt -> block");
     }
-#line 1465 "translate.tab.c"
+#line 1674 "translate.tab.c"
     break;
 
-  case 27: /* expr: expr AND_KW expr  */
-#line 241 "translate.y"
+  case 29: /* if_body: stmt  */
+#line 448 "translate.y"
     {
+    // Do nothing.
+    }
+#line 1682 "translate.tab.c"
+    break;
+
+  case 30: /* $@5: %empty  */
+#line 452 "translate.y"
+    {
+        printf("---------SEEEN ELSE IN INPUT------------\n");
+        Quadruple gotoquad = create_quadruple(symboltable, "GOTO", "UNFILLED ELSE", "", "");
+        add_quadruple(symboltable, gotoquad);
+        //printf("goto  ---- <- NEXT LABEL FOR IF-ELSE STMT\n");
+
+        Quadruple elabelquad = create_quadruple(symboltable, "LABEL","UNFILLED NEXT", "", "");
+        add_quadruple(symboltable, elabelquad);
+        //printf("LABEL ---- <- ELSE LABEL FOR IF-ELSE STMT \n");
+    }
+#line 1697 "translate.tab.c"
+    break;
+
+  case 31: /* if_body: stmt ELSE_KW $@5 stmt  */
+#line 463 "translate.y"
+    {
+    (yyval.id_name) = "hasElse";
+    // Do nothing.
+    }
+#line 1706 "translate.tab.c"
+    break;
+
+  case 32: /* expr: expr AND_KW expr  */
+#line 470 "translate.y"
+    {
+        char* temp = create_temp(symboltable);
+        Quadruple quad = create_quadruple(symboltable,"&&",(yyvsp[-2].id_name),(yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, quad);
+        //printf("%s := %s && %s\n", $$, $1, $3);
+            
+        (yyval.id_name) = temp;
         print_reduction(yyn-2, "expr -> expr AND_KW expr");
     }
-#line 1473 "translate.tab.c"
+#line 1720 "translate.tab.c"
     break;
 
-  case 28: /* expr: expr OR_KW expr  */
-#line 245 "translate.y"
+  case 33: /* expr: expr OR_KW expr  */
+#line 480 "translate.y"
     {
+        char* temp = create_temp(symboltable);
+        Quadruple quad = create_quadruple(symboltable,"||",(yyvsp[-2].id_name),(yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, quad);
+        //printf("%s := %s || %s\n", $$, $1, $3);
+            
+        (yyval.id_name) = temp;
         print_reduction(yyn-2, "expr -> expr OR_KW expr");
     }
-#line 1481 "translate.tab.c"
+#line 1734 "translate.tab.c"
     break;
 
-  case 29: /* expr: expr MUL_OP expr  */
-#line 249 "translate.y"
+  case 34: /* expr: expr MUL_OP expr  */
+#line 490 "translate.y"
     {
+        char* temp = create_temp(symboltable);
+        Quadruple quad = create_quadruple(symboltable,"*",(yyvsp[-2].id_name),(yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, quad);
+        //printf("%s := %s * %s\n", $$, $1, $3);
+            
+        (yyval.id_name) = temp;
+        //printf("expr_1 -> expr_2 * expr_3 was reduced. where expr_1 is %s\n", temp);
         print_reduction(yyn-2, "expr -> expr MUL_OP expr");
     }
-#line 1489 "translate.tab.c"
+#line 1749 "translate.tab.c"
     break;
 
-  case 30: /* expr: expr DIV_OP expr  */
-#line 253 "translate.y"
+  case 35: /* expr: expr DIV_OP expr  */
+#line 501 "translate.y"
     {
+        char* temp = create_temp(symboltable);
+        Quadruple quad = create_quadruple(symboltable,"/",(yyvsp[-2].id_name), (yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, quad);
+        //printf("%s := %s / %s\n", $$, $1, $3);
+            
+        (yyval.id_name) = temp;
         print_reduction(yyn-2, "expr -> expr DIV_OP expr");
     }
-#line 1497 "translate.tab.c"
+#line 1763 "translate.tab.c"
     break;
 
-  case 31: /* expr: expr ADD_OP expr  */
-#line 257 "translate.y"
+  case 36: /* expr: expr ADD_OP expr  */
+#line 511 "translate.y"
     {
+        char* temp = create_temp(symboltable);
+        Quadruple quad = create_quadruple(symboltable,"+",(yyvsp[-2].id_name),(yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, quad);
+        //printf("%s := %s + %s\n", $$, $1, $3);
+            
+        (yyval.id_name) = temp;
+        //printf("expr_1 -> expr_2 + expr_3 was reduced. where expr_1 is %s\n", temp);
         print_reduction(yyn-2, "expr -> expr ADD_OP expr");
     }
-#line 1505 "translate.tab.c"
+#line 1778 "translate.tab.c"
     break;
 
-  case 32: /* expr: expr SUB_OP expr  */
-#line 261 "translate.y"
+  case 37: /* expr: expr SUB_OP expr  */
+#line 522 "translate.y"
     {
+        char* temp = create_temp(symboltable);
+        Quadruple quad = create_quadruple(symboltable,"-",(yyvsp[-2].id_name),(yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, quad);
+        //printf("%s := %s - %s\n", $$, $1, $3);
+            
+        (yyval.id_name) = temp;
         print_reduction(yyn-2, "expr -> expr SUB_OP expr");
     }
-#line 1513 "translate.tab.c"
+#line 1792 "translate.tab.c"
     break;
 
-  case 33: /* expr: expr relop expr  */
-#line 265 "translate.y"
-    {
+  case 38: /* expr: expr relop expr  */
+#line 532 "translate.y"
+    {   
+        char* temp = create_temp(symboltable);
+        Quadruple quad = create_quadruple(symboltable,(yyvsp[-1].id_name),(yyvsp[-2].id_name),(yyvsp[0].id_name), temp);
+        add_quadruple(symboltable, quad);
+            
+        (yyval.id_name) = temp;
+        //printf("%s := %s %s %s\n", $$, $1, $2, $3);
         print_reduction(yyn-2, "expr -> expr relop expr");
     }
-#line 1521 "translate.tab.c"
+#line 1806 "translate.tab.c"
     break;
 
-  case 34: /* expr: LEFT_PA expr RIGHT_PA  */
-#line 269 "translate.y"
+  case 39: /* expr: LEFT_PA expr RIGHT_PA  */
+#line 542 "translate.y"
     {
         print_reduction(yyn-2, "expr -> LEFT_PA expr RIGHT_PA");
+        (yyval.id_name) = (yyvsp[-1].id_name);
     }
-#line 1529 "translate.tab.c"
+#line 1815 "translate.tab.c"
     break;
 
-  case 35: /* expr: INTEGER_NUMBER  */
-#line 273 "translate.y"
-    {
+  case 40: /* expr: INTEGER_NUMBER  */
+#line 547 "translate.y"
+    { 
         print_reduction(yyn-2, "expr -> INTEGER_NUMBER");
+        (yyval.id_name) = (yyvsp[0].id_name);
     }
-#line 1537 "translate.tab.c"
+#line 1824 "translate.tab.c"
     break;
 
-  case 36: /* expr: REAL_NUMBER  */
-#line 277 "translate.y"
+  case 41: /* expr: REAL_NUMBER  */
+#line 552 "translate.y"
     {
         print_reduction(yyn-2, "expr -> REAL_NUMBER");
+        (yyval.id_name) = (yyvsp[0].id_name);
     }
-#line 1545 "translate.tab.c"
+#line 1833 "translate.tab.c"
     break;
 
-  case 37: /* expr: TRUE_KW  */
-#line 281 "translate.y"
+  case 42: /* expr: TRUE_KW  */
+#line 557 "translate.y"
     {
         print_reduction(yyn-2, "expr -> TRUE_KW");
+        (yyval.id_name) = (yyvsp[0].id_name);
     }
-#line 1553 "translate.tab.c"
+#line 1842 "translate.tab.c"
     break;
 
-  case 38: /* expr: FALSE_KW  */
-#line 285 "translate.y"
+  case 43: /* expr: FALSE_KW  */
+#line 562 "translate.y"
     {
         print_reduction(yyn-2, "expr -> FALSE_KW");
+        (yyval.id_name) = (yyvsp[0].id_name);
     }
-#line 1561 "translate.tab.c"
+#line 1851 "translate.tab.c"
     break;
 
-  case 39: /* expr: IDENTIFIER LEFT_PA actualParamList RIGHT_PA  */
-#line 289 "translate.y"
+  case 44: /* expr: IDENTIFIER LEFT_PA actualParamList RIGHT_PA  */
+#line 567 "translate.y"
     {
         print_reduction(yyn-2, "expr -> IDENTIFIER LEFT_PA actualParamList RIGHT_PA");
     }
-#line 1569 "translate.tab.c"
+#line 1859 "translate.tab.c"
     break;
 
-  case 40: /* expr: IDENTIFIER  */
-#line 293 "translate.y"
+  case 45: /* expr: IDENTIFIER  */
+#line 571 "translate.y"
     {
         print_reduction(yyn-2, "expr -> IDENTIFIER");
+        (yyval.id_name) = (yyvsp[0].id_name);
     }
-#line 1577 "translate.tab.c"
+#line 1868 "translate.tab.c"
     break;
 
-  case 41: /* actualParamList: expr  */
-#line 300 "translate.y"
+  case 46: /* actualParamList: expr  */
+#line 579 "translate.y"
     {
         print_reduction(yyn-2, "actualParamList -> expr");
     }
-#line 1585 "translate.tab.c"
+#line 1876 "translate.tab.c"
     break;
 
-  case 42: /* actualParamList: actualParamList COMMA expr  */
-#line 304 "translate.y"
+  case 47: /* actualParamList: actualParamList COMMA expr  */
+#line 583 "translate.y"
     {
         print_reduction(yyn-2, "actualParamList -> actualParamList COMMA expr");
     }
-#line 1593 "translate.tab.c"
+#line 1884 "translate.tab.c"
     break;
 
-  case 43: /* actualParamList: %empty  */
-#line 308 "translate.y"
+  case 48: /* actualParamList: %empty  */
+#line 587 "translate.y"
     {
         print_reduction(yyn-2, "actualParamList -> epsilon");
     }
-#line 1601 "translate.tab.c"
+#line 1892 "translate.tab.c"
     break;
 
-  case 44: /* relop: LT_OP  */
-#line 315 "translate.y"
+  case 49: /* relop: LT_OP  */
+#line 594 "translate.y"
     {
         print_reduction(yyn-2, "relop -> LT_OP");
     }
-#line 1609 "translate.tab.c"
+#line 1900 "translate.tab.c"
     break;
 
-  case 45: /* relop: LE_OP  */
-#line 319 "translate.y"
+  case 50: /* relop: LE_OP  */
+#line 598 "translate.y"
     {
         print_reduction(yyn-2, "relop -> LE_OP");
     }
-#line 1617 "translate.tab.c"
+#line 1908 "translate.tab.c"
     break;
 
-  case 46: /* relop: EQ_OP  */
-#line 323 "translate.y"
+  case 51: /* relop: EQ_OP  */
+#line 602 "translate.y"
     {
         print_reduction(yyn-2, "relop -> EQ_OP");
     }
-#line 1625 "translate.tab.c"
+#line 1916 "translate.tab.c"
     break;
 
-  case 47: /* relop: NE_OP  */
-#line 327 "translate.y"
+  case 52: /* relop: NE_OP  */
+#line 606 "translate.y"
     {
         print_reduction(yyn-2, "relop -> NE_OP");
     }
-#line 1633 "translate.tab.c"
+#line 1924 "translate.tab.c"
     break;
 
-  case 48: /* relop: GE_OP  */
-#line 331 "translate.y"
+  case 53: /* relop: GE_OP  */
+#line 610 "translate.y"
     {
         print_reduction(yyn-2, "relop -> GE_OP");
     }
-#line 1641 "translate.tab.c"
+#line 1932 "translate.tab.c"
     break;
 
-  case 49: /* relop: GT_OP  */
-#line 335 "translate.y"
+  case 54: /* relop: GT_OP  */
+#line 614 "translate.y"
     {
         print_reduction(yyn-2, "relop -> GT_OP");
     }
-#line 1649 "translate.tab.c"
+#line 1940 "translate.tab.c"
     break;
 
 
-#line 1653 "translate.tab.c"
+#line 1944 "translate.tab.c"
 
       default: break;
     }
@@ -1842,7 +2133,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 340 "translate.y"
+#line 619 "translate.y"
 
 
 void yyerror(const char* s) {
@@ -1856,7 +2147,7 @@ int main(void) {
     
     // Open input and output files
     yyin = fopen("input.txt", "r");
-    output = fopen("output.txt", "w");
+    output = fopen("parser-output.txt", "w");
     
     if (!yyin) {
         fprintf(stderr, "Error: Cannot open input file 'input.txt'\n");
@@ -1878,9 +2169,18 @@ int main(void) {
     
     // Parse input
     int result = yyparse();
+
+    TACoutput = fopen("output.txt", "w");
+    fprintf(TACoutput, "Emad Pourhassani := 40116623\n");
+    fprintf(TACoutput, "Afarin Akhoundi  := 40115283\n");
+    fprintf(TACoutput, "----------------------------\n");
     
-    // Print final symbol table
-    symtab_print(symboltable);
+    // Print final symbol table and quadruples to output.txt
+    // generate TAC as well.
+    symtab_fprint(symboltable, TACoutput);
+
+    fprintf(TACoutput, "\nThree Address Codes:\n----------------------------\n");
+    iterate_quadruples(symboltable, fprint_TAC, TACoutput);
     
     // Cleanup
     symtab_destroy(symboltable);

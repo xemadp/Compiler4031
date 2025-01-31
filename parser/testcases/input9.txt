@@ -1,0 +1,20 @@
+program testIfWhileElse;
+begin
+    x := beforeIfElse;
+    if (3 or x) and ( i / 3 = 1 ) then
+        begin
+            y := beforeWhile;
+            while (y / 2 = 1) or x do
+                begin
+                    y := inWhile;
+                end 
+            y := afterWhile;
+            x := afterIfCond;
+            x := beforeElse;
+        end
+    else
+        begin
+            y := inElse;
+        end
+    x := afterIfElse;
+end

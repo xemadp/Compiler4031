@@ -1,0 +1,11 @@
+program testWhile;
+begin
+    x := beforeWhile;
+    while x > 2 do
+        begin
+            x := inWhile;
+            y := y + x;
+        end
+
+    x := afterWhile * 2;
+end

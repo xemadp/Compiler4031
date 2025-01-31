@@ -1,0 +1,15 @@
+	 x := beforeFor 
+	 i := 1 
+	t0 := i <= 20
+L0:
+	 IF t0 GOTO L1 
+	 GOTO L2
+L1:
+	 x := inFor 
+	t1 := 2 / 3
+	t2 := 3 - t1
+	 y := t2 
+	i := i + 1
+	 GOTO L0
+L2:
+	 x := afterFor 

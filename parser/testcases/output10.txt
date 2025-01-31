@@ -1,0 +1,28 @@
+	 x := beforeIfElse 
+	t0 := 3 || x
+	t1 := i / 3
+	t2 := t1 = 1
+	t3 := t0 && t2
+	 IF t3 GOTO L0 
+	 GOTO L1
+L0:
+	 x := inIfCond 
+	 x := beforeElse 
+	 GOTO L2
+L1:
+	 x := inElse 
+	 y := beforeWhile 
+	t4 := y / 2
+	t5 := t4 = 1
+	t6 := t5 || x
+L3:
+	 IF t6 GOTO L4 
+	 GOTO L5
+L4:
+	 y := inWhile 
+	 GOTO L3
+L5:
+	 y := afterWhile 
+	 x := afterElseCond 
+L2:
+	 x := afterIfElse 

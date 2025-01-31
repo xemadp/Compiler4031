@@ -1,0 +1,20 @@
+	 x := before1While 
+	t0 := x > 2
+L0:
+	 IF t0 GOTO L1 
+	 GOTO L2
+L1:
+	 x := in1While 
+	 y := before2While 
+	t1 := y < 30
+L3:
+	 IF t1 GOTO L4 
+	 GOTO L5
+L4:
+	 y := in2While 
+	 GOTO L3
+L5:
+	 y := after2While 
+	 GOTO L0
+L2:
+	 x := after1While 

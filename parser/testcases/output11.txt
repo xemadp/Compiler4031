@@ -1,0 +1,24 @@
+	 x := beforeIfElse 
+	 IF x GOTO L0 
+	 GOTO L1
+L0:
+	 x := inIfCond 
+	 y := beforeFor 
+	 y := 12 
+	t0 := y <= 24
+L3:
+	 IF t0 GOTO L4 
+	 GOTO L5
+L4:
+	 y := inFor 
+	y := y + 1
+	 GOTO L3
+L5:
+	 y := afterFor 
+	 x := afterifCond 
+	 x := beforeElse 
+	 GOTO L2
+L1:
+	 x := inElse 
+L2:
+	 x := afterIfElse 

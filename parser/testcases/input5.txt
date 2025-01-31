@@ -1,0 +1,16 @@
+program testWhileNested;
+begin
+    x := before1While;
+    while x > 2 do
+        begin
+            x := in1While;
+            y := before2While;
+
+            while y < 30 do
+                y := in2While;
+
+            y:= after2While;
+        end
+
+    x := after1While;
+end

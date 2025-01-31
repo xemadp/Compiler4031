@@ -1,0 +1,22 @@
+	 x := beforeWhile 
+	t0 := i < 20
+L0:
+	 IF t0 GOTO L1 
+	 GOTO L2
+L1:
+	 x := inWhile 
+	 y := beforeFor 
+	 j := 0 
+	t1 := j <= 12
+L3:
+	 IF t1 GOTO L4 
+	 GOTO L5
+L4:
+	 y := inFor 
+	j := j + 1
+	 GOTO L3
+L5:
+	 y := afterFor 
+	 GOTO L0
+L2:
+	 x := afterWhile 

@@ -1,0 +1,13 @@
+	 x := beforeWhile 
+	t0 := x > 2
+L0:
+	 IF t0 GOTO L1 
+	 GOTO L2
+L1:
+	 x := inWhile 
+	t1 := y + x
+	 y := t1 
+	 GOTO L0
+L2:
+	t2 := afterWhile * 2
+	 x := t2 

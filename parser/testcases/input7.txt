@@ -1,0 +1,15 @@
+program testWhileIf;
+begin
+    x := beforeWhile;
+    while i < 20 do
+        begin
+        x := inWhile;
+        if (i / 2 = 0) then
+            begin
+            y := inIf;
+            y := y * i;
+            end
+        y := afterIf;
+        end
+    x:= afterWhile;
+end

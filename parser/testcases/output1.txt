@@ -1,0 +1,49 @@
+	t0 := x > 2
+	 IF t0 GOTO L0 
+	 GOTO L1
+L0:
+	 x := true 
+L1:
+	t1 := x > 2
+	 IF t1 GOTO L3 
+	 GOTO L4
+L3:
+	 x := true 
+	 GOTO L5
+L4:
+	 x := false 
+L5:
+	t2 := 2 * 3
+	 y := t2 
+	t3 := x > 2
+	 IF t3 GOTO L6 
+	 GOTO L7
+L6:
+	 x := true 
+	 GOTO L8
+L7:
+	t4 := x < 12
+	 IF t4 GOTO L9 
+	 GOTO L10
+L9:
+	 y := true 
+L10:
+L8:
+	t5 := 2 * 3
+	 z := t5 
+	t6 := x > 2
+	 IF t6 GOTO L12 
+	 GOTO L13
+L12:
+	t7 := x < 12
+	 IF t7 GOTO L15 
+	 GOTO L16
+L15:
+	 y := true 
+	 GOTO L17
+L16:
+	 y := false 
+L17:
+L13:
+	t8 := 2 * 3
+	 z := t8 

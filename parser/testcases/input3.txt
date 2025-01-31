@@ -1,0 +1,11 @@
+program testFor;
+begin
+    x := beforeFor;
+    for i := 1 to 20 do
+        begin
+        x := inFor;
+        y := 3 - 2 /3;
+        end
+
+    x := afterFor;
+end

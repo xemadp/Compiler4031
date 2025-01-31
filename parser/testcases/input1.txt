@@ -1,0 +1,31 @@
+program testIf;
+begin
+    begin
+    if x > 2 then
+        x := true;
+    end
+    begin
+    if x > 2 then
+        x := true;
+    else
+        x := false;
+
+        y:= 2 * 3;
+    end
+    begin
+    if x > 2 then
+        x := true;
+    else
+        if x < 12 then
+            y := true;
+    z := 2 * 3;
+    end
+    begin
+    if x > 2 then
+        if x < 12 then
+            y := true;
+        else
+            y := false;
+    z := 2 * 3;
+    end
+end 

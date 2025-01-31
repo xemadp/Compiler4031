@@ -1,0 +1,21 @@
+program testIfElseFor;
+begin
+    x := beforeIfElse;
+    if x then
+        begin
+            x := inIfCond;
+            x := beforeElse;
+        end
+    else
+        begin
+            x := inElse;
+            y := beforeFor;
+            for y := 12 to 24 do
+                begin
+                    y := inFor;
+                end
+            y := afterFor;
+            x := afterElse;
+        end
+    x := afterIfElse;
+end

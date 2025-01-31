@@ -1,0 +1,13 @@
+program testForNested;
+begin
+    x := before1For;
+    for i := 1 to 20 do
+        begin
+        x := in1For;
+        y := before2For;
+        for j := 2 to 30 do
+            y := in2For;
+        y := after2For;
+        end
+    x := after1For;
+end

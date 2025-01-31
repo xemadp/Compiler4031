@@ -39,15 +39,12 @@ graph TD
     D3["t := a + 12"]
     D4["t := 12 = b"]
     D5["..."]
-    E1["IF EXPR GOTO LABEL"]
-    E2["IF x GOTO L1"]
-    E3["..."]
-    F1["GOTO LABEL"]
-    F2["GOTO L2"]
+    E1["IF x GOTO L1"]
+    E2["..."]
+    F1["GOTO L2"]
     F2["..."]
-    G1["LABEL:"]
-    G2["L6:"]
-    G3["..."]
+    G1["L6:"]
+    G2["..."]
 
     A --> B
     A --> E
@@ -65,13 +62,10 @@ graph TD
     D --> D5
     E --> E1
     E --> E2
-    E --> E3
     F --> F1
     F --> F2
-    F --> F3
     G --> G1
     G --> G2
-    G --> G3
 ```
 
 Also we can utilize a system of Linked lists in order to show the relation between the quadruples, here is an example: 

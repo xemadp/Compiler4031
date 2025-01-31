@@ -321,7 +321,6 @@ stmt
     THEN_KW if_body
       {
       if (strcmp($5,"hasElse")==0){
-          printf("hasElse Check Passed!!!!\n");
           Quadruple labelquad = create_quadruple(symboltable, "LABEL",$<label_pair>3.label2, "", "");
           add_quadruple(symboltable, labelquad);
           //printf("%s : \n", NEXT_label);
@@ -333,7 +332,6 @@ stmt
       }
       else
       {
-          printf("hasElse Check ---NOT--- Passed!!!!\n");
          Quadruple labelquad = create_quadruple(symboltable, "LABEL",$<label_pair>3.label1, "", "");
          //printf("%s : \n", NEXT_label);
          add_quadruple(symboltable, labelquad);
@@ -435,6 +433,10 @@ stmt
     }
     | RETURN_KW expr SEMICOLON
     {
+        Quadruple quad = create_quadruple(symboltable, "RETURN", $2, "", "");
+        add_quadruple(symboltable, quad);
+        //printf("RETURN %s : \n", $2);
+    
         print_reduction(yyn-2, "stmt -> RETURN_KW expr SEMICOLON");
     }
     | block
@@ -450,7 +452,6 @@ if_body
     }
     | stmt ELSE_KW
     {
-        printf("---------SEEEN ELSE IN INPUT------------\n");
         Quadruple gotoquad = create_quadruple(symboltable, "GOTO", "UNFILLED ELSE", "", "");
         add_quadruple(symboltable, gotoquad);
         //printf("goto  ---- <- NEXT LABEL FOR IF-ELSE STMT\n");

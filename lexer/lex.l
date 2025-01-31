@@ -8,12 +8,7 @@
 // Global symbol table
 extern SymbolTable* symboltable;
 
-// Current scope tracking
-static int current_scope = 0;
-
 // Forward declarations
-static void init_symbol_table(void);
-static Symbol* install_identifier(const char* name, int kind);
 static Symbol* install_constant(const char* value, DataType type);
 
 // Helper function to convert values to strings
@@ -58,20 +53,20 @@ wrongID          {digit}+{id}
 "return"        { return RETURN_KW; }
 "and"           { return AND_KW; }
 "or"            { return OR_KW; }
-"true"          { return TRUE_KW; }
-"false"         { return FALSE_KW; }
+"true"          { yylval.id_name = "true";   return TRUE_KW; }
+"false"         { yylval.id_name = "false"; return FALSE_KW; }
 
 ":="            { return ASSIGN_OP; }
 "*"             { return MUL_OP; }
 "/"             { return DIV_OP; }
 "+"             { return ADD_OP; }
 "-"             { return SUB_OP; }
-"<"             { return LT_OP; }
-"<="            { return LE_OP; }
-"<>"            { return NE_OP; }
-"="             { return EQ_OP; }
-">="            { return GE_OP; }
-">"             { return GT_OP; }
+"<"             { yylval.id_name = "<"; return LT_OP; }
+"<="            { yylval.id_name = "<="; return LE_OP; }
+"<>"            { yylval.id_name = "<>"; return NE_OP; }
+"="             { yylval.id_name = "="; return EQ_OP; }
+">="            { yylval.id_name = ">="; return GE_OP; }
+">"             { yylval.id_name = ">"; return GT_OP; }
 ":"             { return COLON; }
 ";"             { return SEMICOLON; }
 ","             { return COMMA; }
@@ -86,10 +81,10 @@ wrongID          {digit}+{id}
 {real}          {
     // Convert the real number to a string for symbol table
     double value = atof(yytext);
-    yylval.real_val = value;
-    
     // Install the constant in symbol table
     char* value_str = value_to_string(&value, TYPE_REAL);
+
+    yylval.id_name = strdup(value_str);
     install_constant(value_str, TYPE_REAL);
     free(value_str);
     
@@ -104,7 +99,7 @@ wrongID          {digit}+{id}
 {integer}       {
     // Convert the integer to a string for symbol table
     int value = atoi(yytext);
-    yylval.int_val = value;
+    yylval.id_name = strdup(yytext);
     
     // Install the constant in symbol table
     char* value_str = value_to_string(&value, TYPE_INT);
@@ -149,47 +144,8 @@ static char* value_to_string(const void* value, DataType type) {
     return strdup(buffer);
 }
 
-/* Initialize the symbol table */
-static void init_symbol_table(void) {
-    if (!symboltable) {
-        symboltable = symtab_create(101); // Start with reasonable size
-        if (!symboltable) {
-            fprintf(stderr, "Failed to create symbol table\n");
-            exit(1);
-        }
-    }
-}
-
-/* Install an identifier in the symbol table */
-static Symbol* install_identifier(const char* name, int kind) {
-    if (!symboltable) init_symbol_table();
-    
-    // First check if symbol exists in current scope
-    Symbol* existing = symtab_lookup(symboltable, name, current_scope);
-    if (existing) return existing;
-    
-    // Create new symbol
-    Symbol new_symbol = {
-        .name = strdup(name),
-        .kind = kind,
-        .type = TYPE_UNKNOWN, // Type will be set during semantic analysis
-        .scope = current_scope,
-        .line_number = yylineno,
-        .is_initialized = true
-    };
-    
-    // Insert into symbol table
-    if (symtab_insert(symboltable, &new_symbol)) {
-        return symtab_lookup(symboltable, name, current_scope);
-    }
-    
-    free((void*)new_symbol.name);
-    return NULL;
-}
-
 /* Install a constant in the symbol table */
 static Symbol* install_constant(const char* value, DataType type) {
-    if (!symboltable) init_symbol_table();
     
     // Constants are stored in global scope (0)
     Symbol* existing = symtab_lookup(symboltable, value, 0);

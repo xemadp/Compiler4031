@@ -1,6 +1,16 @@
 # Compiler4031
 K.N Toosi University of Technology Compiler 4031 Fall Project
 
+### Authors
+
+[Emad Pourhassani](https://github.com/xemadp)
+
+[Afarin Akhoundi](https://github.com/afarin461)
+
+Phase1 : Lexical Analysis
+Phase2 : Syntactical Analysis
+Phase3 : Three Address Code Generation
+
 # Lexer
 The lexical analyzer generator `flex` is used to tokenize the input streams into tokens in the project specification format.
 A symbol table is contained within the implementation of this lexer, to help with error handling in the future.

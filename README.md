@@ -8,7 +8,9 @@ K.N Toosi University of Technology Compiler 4031 Fall Project
 [Afarin Akhoundi](https://github.com/afarin461)
 
 Phase1 : Lexical Analysis
+
 Phase2 : Syntactical Analysis
+
 Phase3 : Three Address Code Generation
 
 # Lexer
